@@ -125,4 +125,18 @@ Module Choose.
             Ret (x, y))))
       end.
   End Mix.
+
+  Fixpoint compile {E A B} (x : C.t E A) : (A -> t E B) -> t E B :=
+    match x with
+    | C.Ret _ v => fun k => k v
+    | C.Call c => fun k => Call c k
+    | C.Let _ _ x f => fun k => compile x (fun x => compile (f x) k)
+    | C.Join _ _ x y => fun k =>
+      let xy := Mix.make (compile x Ret) (compile y Ret) in
+      bind (Mix.join xy) k
+    | C.First _ _ x y => fun k =>
+      let x := compile x (fun x => Ret (inl x)) in
+      let y := compile y (fun y => Ret (inr y)) in
+      Choose x y k
+    end.
 End Choose.
