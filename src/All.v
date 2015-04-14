@@ -21,7 +21,7 @@ Module Choose.
   Arguments Choose {E A} _ _.
 
   Module Mix.
-    Inductive t {E A} : Choose.t E A -> Choose.t E A -> Type :=
+    Inductive t {E A B} : Choose.t E A -> Choose.t E B -> Type :=
     | RetRet : forall v_x v_y, t (Ret v_x) (Ret v_y)
     | RetCall : forall v_x c_y h_y, t (Ret v_x) (Call c_y h_y)
     | RetChoose : forall v_x y1 y2, t (Ret v_x) (Choose y1 y2)
@@ -40,14 +40,45 @@ Module Choose.
     | ChooseChoose : forall x1 x2 y1 y2,
       t x1 y1 -> t x1 y2 -> t x2 y1 -> t x2 y2 ->
       t (Choose x1 x2) (Choose y1 y2).
-    Arguments RetRet {E A} _ _.
-    Arguments RetCall {E A} _ _ _.
-    Arguments RetChoose {E A} _ _ _.
-    Arguments CallRet {E A} _ _ _.
-    Arguments CallCall {E A c_x h_x c_y h_y} _ _.
-    Arguments CallChoose {E A c_x h_x y1 y2} _ _.
-    Arguments ChooseRet {E A} _ _ _ .
-    Arguments ChooseCall {E A x1 x2 c_y h_y} _ _.
-    Arguments ChooseChoose {E A x1 x2 y1 y2} _ _ _ _.
+    Arguments RetRet {E A B} _ _.
+    Arguments RetCall {E A B} _ _ _.
+    Arguments RetChoose {E A B} _ _ _.
+    Arguments CallRet {E A B} _ _ _.
+    Arguments CallCall {E A B c_x h_x c_y h_y} _ _.
+    Arguments CallChoose {E A B c_x h_x y1 y2} _ _.
+    Arguments ChooseRet {E A B} _ _ _ .
+    Arguments ChooseCall {E A B x1 x2 c_y h_y} _ _.
+    Arguments ChooseChoose {E A B x1 x2 y1 y2} _ _ _ _.
+
+    Fixpoint make_call {E A B}
+      (c_x : Effect.command E) (h_x : Effect.answer E c_x -> Choose.t E A)
+      (y : Choose.t E B) (z : forall y a, t (h_x a) y)
+      : t (Choose.Call c_x h_x) y :=
+      match y with
+      | Ret v_y => CallRet c_x h_x v_y
+      | Call c_y h_y =>
+        CallCall (z (Call c_y h_y)) (fun a => make_call c_x h_x (h_y a) z)
+      | Choose y1 y2 =>
+        CallChoose (make_call c_x h_x y1 z) (make_call c_x h_x y2 z)
+      end.
+
+    Fixpoint make {E A B} (x : Choose.t E A) (y : Choose.t E B) : t x y :=
+      match x with
+      | Ret v_x =>
+        match y with
+        | Ret v_y => RetRet v_x v_y
+        | Call c_y h_y => RetCall v_x c_y h_y
+        | Choose y1 y2 => RetChoose v_x y1 y2
+        end
+      | Call c_x h_x => make_call c_x h_x y (fun y a => make (h_x a) y)
+      | Choose x1 x2 =>
+        match y with
+        | Ret v_y => ChooseRet x1 x2 v_y
+        | Call c_y h_y =>
+          ChooseCall (make x1 (Call c_y h_y)) (make x2 (Call c_y h_y))
+        | Choose y1 y2 =>
+          ChooseChoose (make x1 y1) (make x1 y2) (make x2 y1) (make x2 y2)
+        end
+      end.
   End Mix.
 End Choose.
