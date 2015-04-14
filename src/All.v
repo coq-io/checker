@@ -15,40 +15,44 @@ Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
   | Ret : A -> t E A
   | Call : forall c, (Effect.answer E c -> t E A) -> t E A
-  | Choose : t E A -> t E A -> t E A.
+  | Choose : forall B, t E B -> t E B -> (B -> t E A) -> t E A.
   Arguments Ret {E A} _.
   Arguments Call {E A} _ _.
-  Arguments Choose {E A} _ _.
+  Arguments Choose {E A B} _ _ _.
 
   Module Mix.
     Inductive t {E A B} : Choose.t E A -> Choose.t E B -> Type :=
     | RetRet : forall v_x v_y, t (Ret v_x) (Ret v_y)
     | RetCall : forall v_x c_y h_y, t (Ret v_x) (Call c_y h_y)
-    | RetChoose : forall v_x y1 y2, t (Ret v_x) (Choose y1 y2)
+    | RetChoose : forall B' v_x y1 y2 (k_y : B' -> Choose.t E B),
+      t (Ret v_x) (Choose y1 y2 k_y)
     | CallRet : forall c_x h_x v_y, t (Call c_x h_x) (Ret v_y)
     | CallCall : forall c_x h_x c_y h_y,
       (forall a, t (h_x a) (Call c_y h_y)) ->
       (forall a, t (Call c_x h_x) (h_y a)) ->
       t (Call c_x h_x) (Call c_y h_y)
-    | CallChoose : forall c_x h_x y1 y2,
-      t (Call c_x h_x) y1 -> t (Call c_x h_x) y2 ->
-      t (Call c_x h_x) (Choose y1 y2)
-    | ChooseRet : forall x1 x2 v_y, t (Choose x1 x2) (Ret v_y)
-    | ChooseCall : forall x1 x2 c_y h_y,
-      t x1 (Call c_y h_y) -> t x2 (Call c_y h_y) ->
-      t (Choose x1 x2) (Call c_y h_y)
-    | ChooseChoose : forall x1 x2 y1 y2,
-      t x1 y1 -> t x1 y2 -> t x2 y1 -> t x2 y2 ->
-      t (Choose x1 x2) (Choose y1 y2).
+    | CallChoose : forall B' c_x h_x y1 y2 (k_y : B' -> Choose.t E B),
+      t (B := B') (Call c_x h_x) y1 -> t (B := B') (Call c_x h_x) y2 ->
+      t (Call c_x h_x) (Choose y1 y2 k_y)
+    | ChooseRet : forall A' x1 x2 (k_x : A' -> Choose.t E A) v_y,
+      t (Choose x1 x2 k_x) (Ret v_y)
+    | ChooseCall : forall A' x1 x2 (k_x : A' -> Choose.t E A) c_y h_y,
+      t (A := A') x1 (Call c_y h_y) -> t (A := A') x2 (Call c_y h_y) ->
+      t (Choose x1 x2 k_x) (Call c_y h_y)
+    | ChooseChoose : forall A' B' x1 x2 y1 y2
+      (k_x : A' -> Choose.t E A) (k_y : B' -> Choose.t E B),
+      t (A := A') (B := B') x1 y1 -> t (A := A') (B := B') x1 y2 ->
+      t (A := A') (B := B') x2 y1 -> t (A := A') (B := B') x2 y2 ->
+      t (Choose x1 x2 k_x) (Choose y1 y2 k_y).
     Arguments RetRet {E A B} _ _.
     Arguments RetCall {E A B} _ _ _.
-    Arguments RetChoose {E A B} _ _ _.
+    Arguments RetChoose {E A B B'} _ _ _ _.
     Arguments CallRet {E A B} _ _ _.
     Arguments CallCall {E A B c_x h_x c_y h_y} _ _.
-    Arguments CallChoose {E A B c_x h_x y1 y2} _ _.
-    Arguments ChooseRet {E A B} _ _ _ .
-    Arguments ChooseCall {E A B x1 x2 c_y h_y} _ _.
-    Arguments ChooseChoose {E A B x1 x2 y1 y2} _ _ _ _.
+    Arguments CallChoose {E A B B' c_x h_x y1 y2} _ _ _.
+    Arguments ChooseRet {E A B A'} _ _ _ _.
+    Arguments ChooseCall {E A B A' x1 x2} _ {c_y h_y} _ _.
+    Arguments ChooseChoose {E A B A' B' x1 x2 y1 y2} _ _ _ _ _ _.
 
     Fixpoint make_call {E A B}
       (c_x : Effect.command E) (h_x : Effect.answer E c_x -> Choose.t E A)
@@ -79,6 +83,20 @@ Module Choose.
         | Choose y1 y2 =>
           ChooseChoose (make x1 y1) (make x1 y2) (make x2 y1) (make x2 y2)
         end
+      end.
+
+    Fixpoint join {E A B C} {x y} (xy : t x y) (k : A -> B -> Choose.t E C)
+      : Choose.t E C :=
+      match xy with
+      | RetRet v_x v_y => k v_x v_y
+      | RetCall v_x c_y h_y => bind (Call c_y h_y) (fun y => k v_x y)
+      | RetChoose v_x y1 y2 => bind (Choose y1 y2) (fun y => k v_x y)
+      | CallRet c_x h_x v_y => bind (Call c_x h_x) (fun x => k x v_y)
+      | CallCall c_x _ c_y _ m_x m_y =>
+        Choose (Call c_x (fun a => join (m_x a) k))
+          (Call c_y (fun a => join (m_y a) k))
+      | CallChoose _ _ _ _ m_y1 m_y2 => Choose (join m_y1 k) (join m_y2 k)
+      | ChooseRet x1 x2 v_y => x1 x2 v_y => bind (Choose x1 x2) 
       end.
   End Mix.
 End Choose.
