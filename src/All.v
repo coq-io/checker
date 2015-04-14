@@ -20,6 +20,13 @@ Module Choose.
   Arguments Call {E A} _ _.
   Arguments Choose {E A B} _ _ _.
 
+  Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
+    match x with
+    | Ret v_x => f v_x
+    | Call c_x h_x => Call c_x (fun a => bind (h_x a) f)
+    | Choose _ x1 x2 k_x => Choose x1 x2 (fun x => bind (k_x x) f)
+    end.
+
   Module Mix.
     Inductive t {E A B} : Choose.t E A -> Choose.t E B -> Type :=
     | RetRet : forall v_x v_y, t (Ret v_x) (Ret v_y)
@@ -56,14 +63,14 @@ Module Choose.
 
     Fixpoint make_call {E A B}
       (c_x : Effect.command E) (h_x : Effect.answer E c_x -> Choose.t E A)
-      (y : Choose.t E B) (z : forall y a, t (h_x a) y)
+      (y : Choose.t E B) (z : forall B (y : Choose.t E B) a, t (h_x a) y)
       : t (Choose.Call c_x h_x) y :=
       match y with
       | Ret v_y => CallRet c_x h_x v_y
       | Call c_y h_y =>
-        CallCall (z (Call c_y h_y)) (fun a => make_call c_x h_x (h_y a) z)
-      | Choose y1 y2 =>
-        CallChoose (make_call c_x h_x y1 z) (make_call c_x h_x y2 z)
+        CallCall (z _ (Call c_y h_y)) (fun a => make_call c_x h_x (h_y a) z)
+      | Choose _ y1 y2 k_y =>
+        CallChoose k_y (make_call c_x h_x y1 z) (make_call c_x h_x y2 z)
       end.
 
     Fixpoint make {E A B} (x : Choose.t E A) (y : Choose.t E B) : t x y :=
@@ -72,31 +79,50 @@ Module Choose.
         match y with
         | Ret v_y => RetRet v_x v_y
         | Call c_y h_y => RetCall v_x c_y h_y
-        | Choose y1 y2 => RetChoose v_x y1 y2
+        | Choose _ y1 y2 k_y => RetChoose v_x y1 y2 k_y
         end
-      | Call c_x h_x => make_call c_x h_x y (fun y a => make (h_x a) y)
-      | Choose x1 x2 =>
+      | Call c_x h_x => make_call c_x h_x y (fun _ y a => make (h_x a) y)
+      | Choose _ x1 x2 k_x =>
         match y with
-        | Ret v_y => ChooseRet x1 x2 v_y
+        | Ret v_y => ChooseRet x1 x2 k_x v_y
         | Call c_y h_y =>
-          ChooseCall (make x1 (Call c_y h_y)) (make x2 (Call c_y h_y))
-        | Choose y1 y2 =>
-          ChooseChoose (make x1 y1) (make x1 y2) (make x2 y1) (make x2 y2)
+          ChooseCall k_x (make x1 (Call c_y h_y)) (make x2 (Call c_y h_y))
+        | Choose _ y1 y2 k_y =>
+          ChooseChoose k_x k_y
+            (make x1 y1) (make x1 y2) (make x2 y1) (make x2 y2)
         end
       end.
 
-    Fixpoint join {E A B C} {x y} (xy : t x y) (k : A -> B -> Choose.t E C)
-      : Choose.t E C :=
+    Fixpoint join {E A B} {x y} (xy : t x y) : Choose.t E (A * B) :=
       match xy with
-      | RetRet v_x v_y => k v_x v_y
-      | RetCall v_x c_y h_y => bind (Call c_y h_y) (fun y => k v_x y)
-      | RetChoose v_x y1 y2 => bind (Choose y1 y2) (fun y => k v_x y)
-      | CallRet c_x h_x v_y => bind (Call c_x h_x) (fun x => k x v_y)
+      | RetRet v_x v_y => Ret (v_x, v_y)
+      | RetCall v_x c_y h_y => bind (Call c_y h_y) (fun y => Ret (v_x, y))
+      | RetChoose _ v_x y1 y2 k_y =>
+        bind (Choose y1 y2 k_y) (fun y => Ret (v_x, y))
+      | CallRet c_x h_x v_y => bind (Call c_x h_x) (fun x => Ret (x, v_y))
       | CallCall c_x _ c_y _ m_x m_y =>
-        Choose (Call c_x (fun a => join (m_x a) k))
-          (Call c_y (fun a => join (m_y a) k))
-      | CallChoose _ _ _ _ m_y1 m_y2 => Choose (join m_y1 k) (join m_y2 k)
-      | ChooseRet x1 x2 v_y => x1 x2 v_y => bind (Choose x1 x2) 
+        Choose (Call c_x (fun a => join (m_x a)))
+          (Call c_y (fun a => join (m_y a)))
+          (fun x => Ret x)
+      | CallChoose _ _ _ _ _ k_y m_y1 m_y2 =>
+        Choose (join m_y1) (join m_y2) (fun xy =>
+          let (x, y) := xy in
+          bind (k_y y) (fun y => Ret (x, y)))
+      | ChooseRet _ x1 x2 k_x v_y =>
+        bind (Choose x1 x2 k_x) (fun x => Ret (x, v_y))
+      | ChooseCall _ _ _ k_x _ _ m_x1 m_x2 =>
+        Choose (join m_x1) (join m_x2) (fun xy =>
+          let (x, y) := xy in
+          bind (k_x x) (fun x => Ret (x, y)))
+      | ChooseChoose _ _ _ _ _ _ k_x k_y m_11 m_12 m_21 m_22 =>
+        Choose
+          (Choose (join m_11) (join m_12) Ret)
+          (Choose (join m_21) (join m_22) Ret)
+          (fun xy =>
+            let (x, y) := xy in
+            bind (k_x x) (fun x =>
+            bind (k_y y) (fun y =>
+            Ret (x, y))))
       end.
   End Mix.
 End Choose.
