@@ -1,4 +1,8 @@
+Require Import Coq.Lists.List.
 Require Import Io.All.
+
+Import ListNotations.
+Import C.Notations.
 
 Module Model.
   Record t (E : Effect.t) (S : Type) := New {
@@ -140,3 +144,48 @@ Module Choose.
       Choose x y k
     end.
 End Choose.
+
+Module Lock.
+  Definition S := bool.
+
+  Module Command.
+    Inductive t :=
+    | Lock
+    | Unlock.
+  End Command.
+
+  Definition E : Effect.t :=
+    Effect.New Command.t (fun _ => unit).
+
+  Definition lock : C.t E unit :=
+    call E Command.Lock.
+
+  Definition unlock : C.t E unit :=
+    call E Command.Unlock.
+
+  Definition condition (c : Effect.command E) (s : S) : bool :=
+    match (c, s) with
+    | (Command.Lock, false) | (Command.Unlock, true) => true
+    | (Command.Lock, true) | (Command.Unlock, false) => false
+    end.
+
+  Definition answer (c : Effect.command E) (s : S) : Effect.answer E c :=
+    tt.
+
+  Definition state (c : Effect.command E) (s : S) : S :=
+    match c with
+    | Command.Lock => true
+    | Command.Unlock => false
+    end.
+
+  Definition m : Model.t E S :=
+    Model.New condition answer state.
+
+  Fixpoint ex1 (n : nat) : C.t E unit :=
+    match n with
+    | O => ret tt
+    | Datatypes.S n =>
+      let! _ : unit * unit := join (ex1 n) (do! lock in unlock) in
+      ret tt
+    end.
+End Lock.
