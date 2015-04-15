@@ -40,34 +40,36 @@ Module C.
   Arguments Choose {E A B} _ _ _.
 
   Module StrictC.
-    Inductive t (E : Effect.t) (A : Type) : Type :=
-    | Call : forall c, (Effect.answer E c -> t E A) -> t E A
-    | CallRet : forall c, (Effect.answer E c -> A) -> t E A
-    | Let : forall (B : Type)
-    | Join : forall (B C : Type), t E B -> t E C -> (B * C -> t E A) -> t E A
-    | Choose : forall (B : Type), t E B -> t E B -> (B -> t E A) -> t E A.
-    Arguments Call {E A} _ _.
-    Arguments CallRet {E A} _ _.
-    Arguments Join {E A B C} _ _ _.
-    Arguments Choose {E A B} _ _ _.
+    Inductive t (E : Effect.t) : Type -> Type :=
+    | Call : forall c, t E (Effect.answer E c)
+    | Let : forall (A B : Type), t E B -> (B -> t E A) -> t E A
+    | LetRet : forall (A B : Type), t E B -> (B -> A) -> t E A
+    | Join : forall (A B : Type), t E A -> t E B -> t E (A * B)
+    | Choose : forall (A : Type), t E A -> t E A -> t E A.
+    Arguments Call {E} _.
+    Arguments Let {E A B} _ _.
+    Arguments LetRet {E A B} _ _.
+    Arguments Join {E A B} _ _.
+    Arguments Choose {E A} _ _.
 
     Module Step.
-      Inductive t {E : Effect.t} {A : Type} (e : Event.t E)
-        : StrictC.t E A -> StrictC.t E A -> Type :=
-      | Call : forall h,
-        t e (C.Call (Event.c e) h) (h (Event.a e))
-      | JoinLeft : forall B C (x : C.t E B) (y : C.t E C) k x',
-        t e (A := B) x x' ->
-        t e (C.Join x y k) (join x' y k)
-      | JoinRight : forall B C (x : C.t E B) (y : C.t E C) k y',
-        t e (A := C) y y' ->
-        t e (C.Join x y k) (join x y' k)
-      | ChooseLeft : forall x1 x2 k x1',
-        t e x1 x1' ->
-        t e (C.Choose x1 x2 k) (bind x1' k)
-      | ChooseRight : forall x1 x2 k x2',
+      Inductive t {E : Effect.t} (e : Event.t E)
+        : forall {A}, StrictC.t E A -> A + StrictC.t E A -> Type :=
+      | Call : t e (StrictC.Call (Event.c e)) (inl (Event.a e)).
+      | CallRet : forall h,
+        t e (StrictC.CallRet (Event.c e) h) (inl (h (Event.a e)))
+      | JoinLeft : forall B C (x : StrictC.t E B) (y : StrictC.t E C) x',
+        t e (A := B) x (inr x') ->
+        t e (StrictC.Join x y) (inr (StrictC.Join x' y)).
+      | JoinRight : forall B C (x : StrictC.t E B) (y : StrictC.t E C) y',
+        t e (A := C) y (inr y') ->
+        t e (StrictC.Join x y) (StrictC.Join x y')
+      | ChooseLeft : forall x1 x2 x1',
+        t e x1 (inr x1') ->
+        t e (StrictC.Choose x1 x2) (bind x1')
+      | ChooseRight : forall x1 x2 x2',
         t e x2 x2' ->
-        t e (C.Choose x1 x2 k) (bind x2' k).
+        t e (StrictC.Choose x1 x2) (bind x2').
     End Step.
   End StrictC.
 
