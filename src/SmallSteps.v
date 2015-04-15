@@ -87,6 +87,15 @@ Module C.
         t e x2 x2' ->
         t e (StrictC.Choose x1 x2) x2'.
     End Step.
+
+    (*Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
+      match x with
+      | Map _ _ x f_x =>
+        Map (join_left x y) (fun xy => let (x, y) := xy in (f_x x, y))
+      | Call c => Let (Call c) (fun a => Map y (fun y => (a, y)))
+      | Let _ _ x f_x =>
+        Let (join_left x y) (fun xy => let (x, y) := xy in (f_x x, y))
+      end.*)
   End StrictC.
 
   Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
@@ -291,7 +300,7 @@ Module Choose.
       Choose (compile x) (compile y) (fun xy => compile (k xy))
     end.
 
-  Lemma equiv_join_bind {E A B C} (x : C.t E A) (y : C.t E B) (k : A * B -> C.t E C)
+  (*Lemma equiv_join_bind {E A B C} (x : C.t E A) (y : C.t E B) (k : A * B -> C.t E C)
     compile (C.join x y) k -> bind (compile .
 
   Fixpoint equiv {E} : forall {A} (e : Event.t E) (x x' : C.t E A),
@@ -312,5 +321,5 @@ Module Choose.
       bind (bind (compile (h a)) (fun x => Ret (x, c)))
         (fun xy => compile (k xy)).
       
-  Defined.
+  Defined.*)
 End Choose.
