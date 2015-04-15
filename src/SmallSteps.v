@@ -94,6 +94,13 @@ Module Choose.
   Arguments Call {E A} _ _.
   Arguments Choose {E A B} _ _ _.
 
+  Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
+    match x with
+    | Ret v_x => f v_x
+    | Call c_x h_x => Call c_x (fun a => bind (h_x a) f)
+    | Choose _ x1 x2 k_x => Choose x1 x2 (fun x => bind (k_x x) f)
+    end.
+
   Module Step.
     Inductive t {E : Effect.t} {A : Type} (e : Event.t E)
       : Choose.t E A -> Choose.t E A -> Type :=
@@ -101,18 +108,11 @@ Module Choose.
       t e (Choose.Call (Event.c e) h) (h (Event.a e))
     | ChooseLeft : forall x1 x2 k x1',
       t e x1 x1' ->
-      t e (Choose.Choose x1 x2 k) x1'
+      t e (Choose.Choose x1 x2 k) (bind x1' k)
     | ChooseRight : forall x1 x2 k x2',
       t e x2 x2' ->
-      t e (Choose.Choose x1 x2 k) x2'.
+      t e (Choose.Choose x1 x2 k) (bind x2' k).
   End Step.
-
-  Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
-    match x with
-    | Ret v_x => f v_x
-    | Call c_x h_x => Call c_x (fun a => bind (h_x a) f)
-    | Choose _ x1 x2 k_x => Choose x1 x2 (fun x => bind (k_x x) f)
-    end.
 
   Module Mix.
     Inductive t {E A B} : Choose.t E A -> Choose.t E B -> Type :=
@@ -212,4 +212,15 @@ Module Choose.
             Ret (x, y))))
       end.
   End Mix.
+
+  Fixpoint compile {E A} (x : C.t E A) : t E A :=
+    match x with
+    | C.Ret v => Ret v
+    | C.Call c h => Call c (fun a => compile (h a))
+    | C.Join _ _ x y k =>
+      let xy := Mix.make (compile x) (compile y) in
+      bind (Mix.join xy) (fun xy => compile (k xy))
+    | C.Choose _ x y k =>
+      Choose (compile x) (compile y) (fun xy => compile (k xy))
+    end.
 End Choose.
