@@ -155,26 +155,27 @@ Module Choose.
   Arguments Map {E A B} _ _.
   Arguments Choose {E A} _ _.
 
-  (*Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
+  Fixpoint join_left {E A B} (x : t E A) (y : t E B)
+    (join_right : forall A, t E A -> t E (A * B)) : t E (A * B) :=
     match x with
-    | Call c h => Call c (fun a => Choose (join_left join_right (h a) y) (join_right _ _ (h a) y))
+    | Call c h => Call c (fun a => Choose (join_left (h a) y join_right) (join_right _ (h a)))
     | CallRet c h => Call c (fun a => Map y (fun y => (h a, y)))
-    | Map _ x f => Map (join_left join_right x y) (fun xy => let (x, y) := xy in (f x, y))
-    | Choose x1 x2 => Choose (join_left join_right x1 y) (join_left join_right x2 y)
+    | Map _ x f => Map (join_left x y join_right) (fun xy => let (x, y) := xy in (f x, y))
+    | Choose x1 x2 => Choose (join_left x1 y join_right) (join_left x2 y join_right)
     end.
 
   Fixpoint join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     match y with
-    | Call c h => Call c (fun a => Choose (join_left (fun _ _ x y => join_right x y) x (h a)) (join_right x (h a)))
+    | Call c h => Call c (fun a => Choose (join_left x (h a) (fun _ x => join_right x (h a))) (join_right x (h a)))
     | CallRet c h => Call c (fun a => Map x (fun x => (x, h a)))
     | Map _ y f => Map (join_right x y) (fun xy => let (x, y) := xy in (x, f y))
     | Choose y1 y2 => Choose (join_right x y1) (join_right x y2)
     end.
 
   Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
-    join_left join_right x y.*)
+    Choose (join_left x y (fun _ x => join_right x y)) (join_right x y).
 
-  Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
+  (*Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     let fix join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
       match y with
       | Call c h => Call c (fun a => join_right x (h a))
@@ -187,7 +188,7 @@ Module Choose.
     | CallRet c h => Call c (fun a => Map y (fun y => (h a, y)))
     | Map _ x f => Map (join_left x y) (fun xy => let (x, y) := xy in (f x, y))
     | Choose x1 x2 => Choose (join_left x1 y) (join_left x2 y)
-    end.
+    end.*)
 End Choose.
 
 Module Choose.
