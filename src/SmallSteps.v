@@ -208,10 +208,21 @@ Module Choose.
     (H : Step.t e y y') {struct H} : Step.t e (join_right x y) (join x y').
     destruct H as [h | y1 y2 y1' Hy1y1' | y1 y2 y2' Hy2y2'].
     - apply (Step.Call e).
-    - apply (Step.ChooseLeft e).
-      apply (equiv _ e _ _ x y1 y1' Hy1y1').
-    - apply (Step.ChooseRight e).
-      apply (equiv _ e _ _ x y2 y2' Hy2y2').
+    - apply Step.ChooseLeft.
+      now apply equiv.
+    - apply Step.ChooseRight.
+      now apply equiv.
+  Defined.
+
+  Fixpoint equiv_last {E} (e : Event.t E) {A B} (x : t E A) (y : t E B) (y' : B)
+    (H : LastStep.t e y y') {struct H}
+    : Step.t e (join_right x y) (map x (fun x => (x, y'))).
+    destruct H as [h | y1 y2 y1' | y1 y2 y2'].
+    - apply (Step.Call e).
+    - apply Step.ChooseLeft.
+      now apply equiv_last.
+    - apply Step.ChooseRight.
+      now apply equiv_last.
   Defined.
 End Choose.
 
