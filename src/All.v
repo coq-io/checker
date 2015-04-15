@@ -143,6 +143,32 @@ Module Choose.
       let y := compile y (fun y => Ret (inr y)) in
       Choose x y k
     end.
+
+  (*Fixpoint is_not_stuck {E S A} (m : Model.t E S) (x : Choose.t E A) (s : S)
+    : bool :=
+    match x with
+    | Ret _ => true
+    | Call c _ => Model.condition m c s
+    | Choose x1 x2 => orb (is_not_stuck m x1 s) (is_not_stuck m x2 s)
+    end.
+
+  Fixpoint aux {E S} (m : Model.t E S) (post : S -> bool) (x : Choose.t E)
+    (s : S) : bool :=
+    match x with
+    | Ret => post s
+    | Call c h =>
+      if Model.condition m c s then
+        let a := Model.answer m c s in
+        let s := Model.state m c s in
+        andb (is_not_stuck m (h a) s) (aux m post (h a) s)
+      else
+        true
+    | Choose x1 x2 => andb (aux m post x1 s) (aux m post x2 s)
+    end.
+
+  Definition check {E S} (m : Model.t E S) (post : S -> bool) (x : Choose.t E)
+    (s : S) : bool :=
+    andb (is_not_stuck m x s) (aux m post x s).*)
 End Choose.
 
 Module Lock.
@@ -188,4 +214,7 @@ Module Lock.
       let! _ : unit * unit := join (ex1 n) (do! lock in unlock) in
       ret tt
     end.
+
+  Compute ex1 2.
+  Compute Choose.compile (ex1 2) Choose.Ret.
 End Lock.
