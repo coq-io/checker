@@ -160,20 +160,31 @@ Module Choose.
     | Choose x1 x2 => Choose (map x1 f) (map x2 f)
     end.
 
-  Module Step.
+  Module LastStep.
     Inductive t {E : Effect.t} (e : Event.t E) {A : Type}
-      : Choose.t E A -> A + Choose.t E A -> Type :=
-    | Call : forall h,
-      t e (Choose.Call (Event.c e) h) (inr (h (Event.a e)))
+      : Choose.t E A -> A -> Type :=
     | CallRet : forall h,
-      t e (Choose.CallRet (Event.c e) h) (inl (h (Event.a e)))
+      t e (Choose.CallRet (Event.c e) h) (h (Event.a e))
     | ChooseLeft : forall (x1 x2 : Choose.t E A) x1',
       t e x1 x1' ->
       t e (Choose.Choose x1 x2) x1'
     | ChooseRight : forall (x1 x2 : Choose.t E A) x2',
       t e x2 x2' ->
       t e (Choose.Choose x1 x2) x2'.
-    End Step.
+  End LastStep.
+
+  Module Step.
+    Inductive t {E : Effect.t} (e : Event.t E) {A : Type}
+      : Choose.t E A -> Choose.t E A -> Type :=
+    | Call : forall h,
+      t e (Choose.Call (Event.c e) h) (h (Event.a e))
+    | ChooseLeft : forall (x1 x2 : Choose.t E A) x1',
+      t e x1 x1' ->
+      t e (Choose.Choose x1 x2) x1'
+    | ChooseRight : forall (x1 x2 : Choose.t E A) x2',
+      t e x2 x2' ->
+      t e (Choose.Choose x1 x2) x2'.
+  End Step.
 
   Fixpoint join_left {E A B} (x : t E A) (y : t E B)
     (join_right : forall A, t E A -> t E (A * B)) : t E (A * B) :=
@@ -193,43 +204,15 @@ Module Choose.
   Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     Choose (join_left x y (fun _ x => join_right x y)) (join_right x y).
 
-  Fixpoint equiv {E} e : forall {A B} (x : t E A) (y y' : t E B),
-    Step.t e y (inr y') -> Step.t e (join_right x y) (inr (join x y')).
-    intros.
-    destruct X.
-    - simpl.
-      Check Step.Call e (fun a => Choose
-        (join_left x (h a)
-           (fun _ x => join_right x (h a)))
-        (join_right x (h a))).
-      unfold join.
-      apply (Step.Call e (fun a => Choose
-        (join_left x (h a)
-           (fun _ x => join_right x (h a)))
-        (join_right x (h a)))).
-
-
-
-    destruct y as [c h | c h | y1 y2].
-    - simpl.
-      unfold join.
-      Check Step.Call e.
+  Fixpoint equiv {E} (e : Event.t E) {A B} (x : t E A) (y y' : t E B)
+    (H : Step.t e y y') {struct H} : Step.t e (join_right x y) (join x y').
+    destruct H as [h | y1 y2 y1' Hy1y1' | y1 y2 y2' Hy2y2'].
+    - apply (Step.Call e).
+    - apply (Step.ChooseLeft e).
+      apply (equiv _ e _ _ x y1 y1' Hy1y1').
+    - apply (Step.ChooseRight e).
+      apply (equiv _ e _ _ x y2 y2' Hy2y2').
   Defined.
-
-  (*Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
-    let fix join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
-      match y with
-      | Call c h => Call c (fun a => join_right x (h a))
-      | CallRet c h => Call c (fun a => Map x (fun x => (x, h a)))
-      | Map _ y f => Map (join_right x y) (fun xy => let (x, y) := xy in (x, f y))
-      | Choose y1 y2 => Choose (join_right x y1) (join_right x y2)
-      end in
-    match x with
-    | Call c h => Call c (fun a => Choose (join_left (h a) y) (join_right (h a) y))
-    | CallRet c h => Call c (fun a => Map y (fun y => (h a, y)))
-    | Map _ x f => Map (join_left x y) (fun xy => let (x, y) := xy in (f x, y))
-    | Choose x1 x2 => Choose (join_left x1 y) (join_left x2 y)
-    end.*)
 End Choose.
 
 Module Choose.
