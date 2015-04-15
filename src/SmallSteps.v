@@ -146,6 +146,33 @@ End C.
 
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
+  | Call : forall c, (Effect.answer E c -> t E A) -> t E A
+  | CallRet : forall c, (Effect.answer E c -> A) -> t E A
+  | Map : forall B, t E B -> (B -> A) -> t E A
+  | Choose : t E A -> t E A -> t E A.
+  Arguments Call {E A} _ _.
+  Arguments CallRet {E A} _ _.
+  Arguments Map {E A B} _ _.
+  Arguments Choose {E A} _ _.
+
+  Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
+    let fix join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
+      match y with
+      | Call c h => Call c (fun a => join_right x (h a))
+      | CallRet c h => Call c (fun a => Map x (fun x => (x, h a)))
+      | Map _ y f => Map (join_right x y) (fun xy => let (x, y) := xy in (x, f y))
+      | Choose y1 y2 => Choose (join_right x y1) (join_right x y2)
+      end in
+    match x with
+    | Call c h => Call c (fun a => Choose (join_left (h a) y) (join_right (h a) y))
+    | CallRet c h => Call c (fun a => Map y (fun y => (h a, y)))
+    | Map _ x f => Map (join_left x y) (fun xy => let (x, y) := xy in (f x, y))
+    | Choose x1 x2 => Choose (join_left x1 y) (join_left x2 y)
+    end.
+End Choose.
+
+Module Choose.
+  Inductive t (E : Effect.t) (A : Type) : Type :=
   | Ret : A -> t E A
   | Call : forall c, (Effect.answer E c -> t E A) -> t E A
   | Choose : forall B, t E B -> t E B -> (B -> t E A) -> t E A.
