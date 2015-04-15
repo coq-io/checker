@@ -148,32 +148,52 @@ Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
   | Call : forall c, (Effect.answer E c -> t E A) -> t E A
   | CallRet : forall c, (Effect.answer E c -> A) -> t E A
-  | Map : forall B, t E B -> (B -> A) -> t E A
   | Choose : t E A -> t E A -> t E A.
   Arguments Call {E A} _ _.
   Arguments CallRet {E A} _ _.
-  Arguments Map {E A B} _ _.
   Arguments Choose {E A} _ _.
+
+  Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
+    match x with
+    | Call c h => Call c (fun a => map (h a) f)
+    | CallRet c h => CallRet c (fun a => f (h a))
+    | Choose x1 x2 => Choose (map x1 f) (map x2 f)
+    end.
+
+  Module Step.
+    Inductive t {E : Effect.t} (e : Event.t E) {A : Type}
+      : Choose.t E A -> A + Choose.t E A -> Type :=
+    | Call : forall h,
+      t e (Choose.Call (Event.c e) h) (inr (h (Event.a e)))
+    | CallRet : forall h,
+      t e (Choose.CallRet (Event.c e) h) (inl (h (Event.a e)))
+    | ChooseLeft : forall (x1 x2 : Choose.t E A) x1',
+      t e x1 x1' ->
+      t e (Choose.Choose x1 x2) x1'
+    | ChooseRight : forall (x1 x2 : Choose.t E A) x2',
+      t e x2 x2' ->
+      t e (Choose.Choose x1 x2) x2'.
+    End Step.
 
   Fixpoint join_left {E A B} (x : t E A) (y : t E B)
     (join_right : forall A, t E A -> t E (A * B)) : t E (A * B) :=
     match x with
     | Call c h => Call c (fun a => Choose (join_left (h a) y join_right) (join_right _ (h a)))
-    | CallRet c h => Call c (fun a => Map y (fun y => (h a, y)))
-    | Map _ x f => Map (join_left x y join_right) (fun xy => let (x, y) := xy in (f x, y))
+    | CallRet c h => Call c (fun a => map y (fun y => (h a, y)))
     | Choose x1 x2 => Choose (join_left x1 y join_right) (join_left x2 y join_right)
     end.
 
   Fixpoint join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     match y with
     | Call c h => Call c (fun a => Choose (join_left x (h a) (fun _ x => join_right x (h a))) (join_right x (h a)))
-    | CallRet c h => Call c (fun a => Map x (fun x => (x, h a)))
-    | Map _ y f => Map (join_right x y) (fun xy => let (x, y) := xy in (x, f y))
+    | CallRet c h => Call c (fun a => map x (fun x => (x, h a)))
     | Choose y1 y2 => Choose (join_right x y1) (join_right x y2)
     end.
 
   Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     Choose (join_left x y (fun _ x => join_right x y)) (join_right x y).
+
+  (* Lemma equiv {E} e : forall {A B}  *)
 
   (*Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     let fix join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
