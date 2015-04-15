@@ -33,31 +33,45 @@ Module C.
   | Ret : A -> t E A
   | Call : forall c, (Effect.answer E c -> t E A) -> t E A
   | Join : forall {B C : Type}, t E B -> t E C -> (B * C -> t E A) -> t E A
-  | Choose : t E A -> t E A -> t E A.
+  | Choose : forall {B : Type}, t E B -> t E B -> (B -> t E A) -> t E A.
   Arguments Ret {E A} _.
   Arguments Call {E A} _ _.
   Arguments Join {E A B C} _ _ _.
-  Arguments Choose {E A} _ _.
+  Arguments Choose {E A B} _ _ _.
+
+  Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
+    match x with
+    | Ret v_x => f v_x
+    | Call c_x h_x => Call c_x (fun a => bind (h_x a) f)
+    | Join _ _ x y k => Join x y (fun xy => bind (k xy) f)
+    | Choose _ x1 x2 k_x => Choose x1 x2 (fun x => bind (k_x x) f)
+    end.
+
+  Definition join {E A B C} (x : t E A) (y : t E B) (k : A * B -> t E C)
+    : t E C :=
+    match (x, y) with
+    | (Ret v_x, _) => bind y (fun y => k (v_x, y))
+    | (_, Ret v_y) => bind x (fun x => k (x, v_y))
+    | _ => Join x y k
+    end.
 
   Module Step.
     Inductive t {E : Effect.t} {A : Type} (e : Event.t E)
       : C.t E A -> C.t E A -> Type :=
     | Call : forall h,
       t e (C.Call (Event.c e) h) (h (Event.a e))
-    | JoinLeft : forall B C (x : C.t E B) (y : C.t E C) h x',
+    | JoinLeft : forall B C (x : C.t E B) (y : C.t E C) k x',
       t e (A := B) x x' ->
-      t e (C.Join x y h) (C.Join x' y h)
-    | JoinRight : forall B C (x : C.t E B) (y : C.t E C) h y',
+      t e (C.Join x y k) (join x' y k)
+    | JoinRight : forall B C (x : C.t E B) (y : C.t E C) k y',
       t e (A := C) y y' ->
-      t e (C.Join x y h) (C.Join x y' h)
-    | Join : forall B C (x : B) (y : C) h,
-      t e (C.Join (C.Ret x) (C.Ret y) h) (h (x, y))
-    | ChooseLeft : forall x1 x2 x1',
+      t e (C.Join x y k) (join x y' k)
+    | ChooseLeft : forall x1 x2 k x1',
       t e x1 x1' ->
-      t e (C.Choose x1 x2) x1'
-    | ChooseRight : forall x1 x2 x2',
+      t e (C.Choose x1 x2 k) (bind x1' k)
+    | ChooseRight : forall x1 x2 k x2',
       t e x2 x2' ->
-      t e (C.Choose x1 x2) x2'.
+      t e (C.Choose x1 x2 k) (bind x2' k).
   End Step.
 
   Module Steps.
@@ -69,28 +83,6 @@ Module C.
       Step.t e x x' -> t es x' x'' ->
       t (e :: es) x x''.
   End Steps.
-
-  Module ModelStep.
-    Inductive t {E : Effect.t} {S : Type} (m : Model.t E S) {A : Type} (s : S)
-      : C.t E A -> S -> C.t E A -> Type :=
-    | Call : forall c h,
-      Model.condition m c s ->
-      t m s (C.Call c h) (Model.state m c s) (h (Model.answer m c s))
-    | JoinLeft : forall B C (x : C.t E B) (y : C.t E C) h s' x',
-      t m (A := B) s x s' x' ->
-      t m s (C.Join x y h) s' (C.Join x' y h)
-    | JoinRight : forall B C (x : C.t E B) (y : C.t E C) h s' y',
-      t m (A := C) s y s' y' ->
-      t m s (C.Join x y h) s' (C.Join x y' h)
-    | Join : forall B C (x : B) (y : C) h,
-      t m s (C.Join (C.Ret x) (C.Ret y) h) s (h (x, y))
-    | ChooseLeft : forall x1 x2 s' x1',
-      t m s x1 s' x1' ->
-      t m s (C.Choose x1 x2) s' x1'
-    | ChooseRight : forall x1 x2 s' x2',
-      t m s x2 s' x2' ->
-      t m s (C.Choose x1 x2) s' x2'.
-  End ModelStep.
 End C.
 
 Module Choose.
