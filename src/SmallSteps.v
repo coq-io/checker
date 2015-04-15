@@ -186,43 +186,66 @@ Module Choose.
       t e (Choose.Choose x1 x2) x2'.
   End Step.
 
-  Fixpoint join_left {E A B} (x : t E A) (y : t E B)
+  Fixpoint join_left_aux {E A B} (x : t E A) (y : t E B)
     (join_right : forall A, t E A -> t E (A * B)) : t E (A * B) :=
     match x with
-    | Call c h => Call c (fun a => Choose (join_left (h a) y join_right) (join_right _ (h a)))
+    | Call c h => Call c (fun a => Choose (join_left_aux (h a) y join_right) (join_right _ (h a)))
     | CallRet c h => Call c (fun a => map y (fun y => (h a, y)))
-    | Choose x1 x2 => Choose (join_left x1 y join_right) (join_left x2 y join_right)
+    | Choose x1 x2 => Choose (join_left_aux x1 y join_right) (join_left_aux x2 y join_right)
     end.
 
   Fixpoint join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     match y with
-    | Call c h => Call c (fun a => Choose (join_left x (h a) (fun _ x => join_right x (h a))) (join_right x (h a)))
+    | Call c h => Call c (fun a => Choose (join_left_aux x (h a) (fun _ x => join_right x (h a))) (join_right x (h a)))
     | CallRet c h => Call c (fun a => map x (fun x => (x, h a)))
     | Choose y1 y2 => Choose (join_right x y1) (join_right x y2)
     end.
 
-  Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
-    Choose (join_left x y (fun _ x => join_right x y)) (join_right x y).
+  Definition join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
+    join_left_aux x y (fun _ x => join_right x y).
 
-  Fixpoint equiv {E} (e : Event.t E) {A B} (x : t E A) (y y' : t E B)
+  Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
+    Choose (join_left x y) (join_right x y).
+
+  Fixpoint equiv_right {E} (e : Event.t E) {A B} (x : t E A) (y y' : t E B)
     (H : Step.t e y y') {struct H} : Step.t e (join_right x y) (join x y').
-    destruct H as [h | y1 y2 y1' Hy1y1' | y1 y2 y2' Hy2y2'].
+    destruct H.
     - apply (Step.Call e).
     - apply Step.ChooseLeft.
-      now apply equiv.
+      now apply equiv_right.
     - apply Step.ChooseRight.
-      now apply equiv.
+      now apply equiv_right.
   Defined.
 
-  Fixpoint equiv_last {E} (e : Event.t E) {A B} (x : t E A) (y : t E B) (y' : B)
+  Fixpoint equiv_right_last {E} (e : Event.t E) {A B} (x : t E A) (y : t E B) (y' : B)
     (H : LastStep.t e y y') {struct H}
     : Step.t e (join_right x y) (map x (fun x => (x, y'))).
-    destruct H as [h | y1 y2 y1' | y1 y2 y2'].
+    destruct H.
     - apply (Step.Call e).
     - apply Step.ChooseLeft.
-      now apply equiv_last.
+      now apply equiv_right_last.
     - apply Step.ChooseRight.
-      now apply equiv_last.
+      now apply equiv_right_last.
+  Defined.
+
+  Fixpoint equiv_left {E} (e : Event.t E) {A B} (x x' : t E A) (y : t E B)
+    (H : Step.t e x x') {struct H} : Step.t e (join_left x y) (join x' y).
+    destruct H as [h | x1 x2 x1' Hx1x1' | x1 x2 x2' Hx2x2'].
+    - apply (Step.Call e).
+    - apply Step.ChooseLeft.
+      now apply equiv_left.
+    - apply Step.ChooseRight.
+      now apply equiv_left.
+  Defined.
+
+  Fixpoint equiv_left_last {E} (e : Event.t E) {A B} (x : t E A) (x' : A) (y : t E B)
+    (H : LastStep.t e x x') {struct H} : Step.t e (join_left x y) (map y (fun y => (x', y))).
+    destruct H as [h | x1 x2 x1' Hx1x1' | x1 x2 x2' Hx2x2'].
+    - apply (Step.Call e).
+    - apply Step.ChooseLeft.
+      now apply equiv_left_last.
+    - apply Step.ChooseRight.
+      now apply equiv_left_last.
   Defined.
 End Choose.
 
