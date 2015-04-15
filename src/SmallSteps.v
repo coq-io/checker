@@ -193,7 +193,28 @@ Module Choose.
   Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     Choose (join_left x y (fun _ x => join_right x y)) (join_right x y).
 
-  (* Lemma equiv {E} e : forall {A B}  *)
+  Fixpoint equiv {E} e : forall {A B} (x : t E A) (y y' : t E B),
+    Step.t e y (inr y') -> Step.t e (join_right x y) (inr (join x y')).
+    intros.
+    destruct X.
+    - simpl.
+      Check Step.Call e (fun a => Choose
+        (join_left x (h a)
+           (fun _ x => join_right x (h a)))
+        (join_right x (h a))).
+      unfold join.
+      apply (Step.Call e (fun a => Choose
+        (join_left x (h a)
+           (fun _ x => join_right x (h a)))
+        (join_right x (h a)))).
+
+
+
+    destruct y as [c h | c h | y1 y2].
+    - simpl.
+      unfold join.
+      Check Step.Call e.
+  Defined.
 
   (*Fixpoint join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     let fix join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
