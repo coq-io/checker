@@ -163,12 +163,12 @@ End Choose.
 Module Join.
   Inductive t (E : Effect.t) : Type -> Type :=
   | Ret : forall A, A -> t E A
-  | Call : forall A c, (Effect.answer E c -> t E A) -> t E A
+  | Call : forall c, t E (Effect.answer E c)
   | Let : forall A B, t E A -> (A -> t E B) -> t E B
   | Choose : forall A, t E A -> t E A -> t E A
   | Join : forall A B, t E A -> t E B -> t E (A * B).
   Arguments Ret {E A} _.
-  Arguments Call {E A} _ _.
+  Arguments Call {E} _.
   Arguments Let {E A B} _ _.
   Arguments Choose {E A} _ _.
   Arguments Join {E A B} _ _.
@@ -194,8 +194,7 @@ Module Join.
   Module Step.
     Inductive t {E : Effect.t} (e : Event.t E)
       : forall {A}, Join.t E A -> Join.t E A -> Type :=
-    | Call : forall A h,
-      t (A := A) e (Join.Call (Event.c e) h) (h (Event.a e))
+    | Call : t e (Join.Call (Event.c e)) (Join.Ret (Event.a e))
     | Let : forall A B (x x' : Join.t E A) (f : A -> Join.t E B),
       t e x x' ->
       t e (Join.Let x f) (Join.Let x' f)
@@ -219,7 +218,7 @@ Module Join.
   Fixpoint compile {E} {A} (x : t E A) : Choose.t E A :=
     match x with
     | Ret _ v => Choose.Ret v
-    | Call _ c h => Choose.Call c (fun a => compile (h a))
+    | Call c => Choose.Call c Choose.Ret
     | Let _ _ x f => Choose.bind (compile x) (fun x => compile (f x))
     | Choose _ x1 x2 => Choose.Choose (compile x1) (compile x2)
     | Join _ _ x y => Choose.join (compile x) (compile y)
@@ -245,7 +244,7 @@ Module Join.
   Fixpoint equiv_step {E} (e : Event.t E) {A} (x x' : t E A) (H : Step.t e x x')
     {struct H} : Choose.Step.t e (compile x) (compile x').
     destruct H.
-    - apply (Choose.Step.Call e).
+    - apply Choose.Step.Call.
     - apply Choose.equiv_bind.
       now apply equiv_step.
     - apply (Choose.equiv_bind_last e _ v).
