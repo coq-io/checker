@@ -3,21 +3,21 @@ Require Import Io.All.
 
 Import ListNotations.
 
-Module Event.
+(*Module Event.
   Record t (E : Effect.t) := New {
     c : Effect.command E;
     a : Effect.answer E c }.
   Arguments New {E} _ _.
   Arguments c {E} _.
   Arguments a {E} _.
-End Event.
+End Event.*)
 
 (*Module Model.
   Definition t (E : Effect.t) (S : Type) : Type :=
     forall c, S -> option (Effect.answer E c * S).
 End Model.*)
 
-Module Model.
+(*Module Model.
   Record t (E : Effect.t) (S : Type) := New {
     condition : Effect.command E -> S -> bool;
     answer : forall c, S -> Effect.answer E c;
@@ -26,7 +26,7 @@ Module Model.
   Arguments condition {E S} _ _ _.
   Arguments answer {E S} _ _ _.
   Arguments state {E S} _ _ _.
-End Model.
+End Model.*)
 
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
@@ -50,25 +50,18 @@ Module Choose.
   End LastStep.
 
   Module Step.
-    Inductive t {E : Effect.t} (e : Event.t E) {A : Type}
-      : Choose.t E A -> Choose.t E A -> Type :=
-    | Call : forall h,
-      t e (Choose.Call (Event.c e) h) (h (Event.a e))
-    | ChooseLeft : forall (x1 x2 : Choose.t E A) x1',
-      t e x1 x1' ->
-      t e (Choose.Choose x1 x2) x1'
-    | ChooseRight : forall (x1 x2 : Choose.t E A) x2',
-      t e x2 x2' ->
-      t e (Choose.Choose x1 x2) x2'.
+    Inductive t {E : Effect.t} (c : Effect.command E) {A : Type}
+      : Choose.t E A -> (Effect.answer E c -> Choose.t E A) -> Type :=
+    | Call : forall h, t c (Choose.Call c h) h
+    | ChooseLeft : forall (x1 x2 : Choose.t E A) k,
+      t c x1 k ->
+      t c (Choose.Choose x1 x2) k
+    | ChooseRight : forall (x1 x2 : Choose.t E A) k,
+      t c x2 k ->
+      t c (Choose.Choose x1 x2) k.
   End Step.
 
-  Module ModelStep.
-    Inductive t {E S} (m : Model.t E S) (s : S) (e : Event.t E) {A}
-      : Choose.t E A -> Choose.t E A -> Type :=
-    | New : Model.pre m 
-  End ModelStep.
-
-  Module Steps.
+  (*Module Steps.
     Inductive t {E : Effect.t} {A : Type}
       : list (Event.t E) -> Choose.t E A -> Choose.t E A -> Type :=
     | Nil : forall x, t [] x x
@@ -81,7 +74,7 @@ Module Choose.
     Inductive t {E : Effect.t} {A : Type}
       (es : list (Event.t E)) (x : Choose.t E A) (v : A) : Type :=
     | New : forall x', Steps.t es x x' -> LastStep.t x' v -> t es x v.
-  End LastSteps.
+  End LastSteps.*)
 
   Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
     match x with
@@ -129,19 +122,19 @@ Module Choose.
         now apply map.
     Defined.
 
-    Fixpoint bind {E} (e : Event.t E) {A B} (x x' : t E A) (f : A -> t E B)
-      (H : Step.t e x x') : Step.t e (Choose.bind x f) (Choose.bind x' f).
+    Fixpoint bind {E} c {A B} (x : t E A) (f : A -> t E B) k (H : Step.t c x k)
+      : Step.t c (Choose.bind x f) (fun a => Choose.bind (k a) f).
       destruct H.
-      - apply (Step.Call e).
+      - apply Step.Call.
       - apply Step.ChooseLeft.
         now apply bind.
       - apply Step.ChooseRight.
         now apply bind.
     Defined.
 
-    Fixpoint bind_last {E} (e : Event.t E) {A B} (x : t E A) (v : A)
-      (f : A -> t E B) (y : t E B) (H_x : LastStep.t x v)
-      (H_f : Step.t e (f v) y) : Step.t e (Choose.bind x f) y.
+    Fixpoint bind_last {E} c {A B} (x : t E A) (v : A) (f : A -> t E B) k
+      (H_x : LastStep.t x v) (H_f : Step.t c (f v) k)
+      : Step.t c (Choose.bind x f) k.
       destruct H_x.
       - exact H_f.
       - apply Step.ChooseLeft.
@@ -161,20 +154,20 @@ Module Choose.
         now apply bind_last_last with (v_x := v).
     Defined.
 
-    Fixpoint join_right {E} (e : Event.t E) {A B} (x : t E A) (y y' : t E B)
-      (H : Step.t e y y') : Step.t e (Choose.join_right x y) (Choose.join x y').
+    Fixpoint join_right {E} c {A B} (x : t E A) (y : t E B) k (H : Step.t c y k)
+      : Step.t c (Choose.join_right x y) (fun a => Choose.join x (k a)).
       destruct H.
-      - apply (Step.Call e).
+      - apply Step.Call.
       - apply Step.ChooseLeft.
         now apply join_right.
       - apply Step.ChooseRight.
         now apply join_right.
     Defined.
 
-    Fixpoint join_left {E} (e : Event.t E) {A B} (x x' : t E A) (y : t E B)
-      (H : Step.t e x x') : Step.t e (Choose.join_left x y) (Choose.join x' y).
+    Fixpoint join_left {E} c {A B} (x : t E A) (y : t E B) k (H : Step.t c x k)
+      : Step.t c (Choose.join_left x y) (fun a => Choose.join (k a) y).
       destruct H.
-      - apply (Step.Call e).
+      - apply Step.Call.
       - apply Step.ChooseLeft.
         now apply join_left.
       - apply Step.ChooseRight.
