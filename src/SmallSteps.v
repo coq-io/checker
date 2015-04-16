@@ -260,10 +260,12 @@ Module Join.
   Inductive t (E : Effect.t) : Type -> Type :=
   | Ret : forall A, A -> t E A
   | Call : forall A c, (Effect.answer E c -> t E A) -> t E A
+  | Let : forall A B, t E A -> (A -> t E B) -> t E B
   | Choose : forall A, t E A -> t E A -> t E A
   | Join : forall A B, t E A -> t E B -> t E (A * B).
   Arguments Ret {E A} _.
   Arguments Call {E A} _ _.
+  Arguments Let {E A B} _ _.
   Arguments Choose {E A} _ _.
   Arguments Join {E A B} _ _.
 
@@ -278,6 +280,9 @@ Module Join.
     Inductive t {E : Effect.t} : forall {A}, Join.t E A -> A -> Type :=
     | Ret : forall A (v : A),
       t (Join.Ret v) v
+    | Let : forall A B (x : Join.t E A) (f : A -> Join.t E B) (v_x : A) (v_y : B),
+      t x v_x -> t (f v_x) v_y ->
+      t (Join.Let x f) v_y
     | ChooseLeft : forall A (x1 x2 : Join.t E A) (v : A),
       t x1 v ->
       t (Join.Choose x1 x2) v
@@ -294,6 +299,12 @@ Module Join.
       : forall {A}, Join.t E A -> Join.t E A -> Type :=
     | Call : forall A h,
       t (A := A) e (Join.Call (Event.c e) h) (h (Event.a e))
+    | Let : forall A B (x x' : Join.t E A) (f : A -> Join.t E B),
+      t e x x' ->
+      t e (Join.Let x f) (Join.Let x' f)
+    | LetDone : forall A B (x : Join.t E A) (v : A) (f : A -> Join.t E B),
+      LastStep.t x v ->
+      t e (Join.Let x f) (f v)
     | ChooseLeft : forall A (x1 x2 : Join.t E A) x1',
       t e x1 x1' ->
       t e (Join.Choose x1 x2) x1'
