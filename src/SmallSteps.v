@@ -234,20 +234,22 @@ Module Step.
     t c (C.Join _ _ x y) (fun a => C.Join _ _ x (k a)).
 End Step.
 
-(*Module Steps.
-  Inductive t {E : Effect.t} {A : Type}
-    : list (Event.t E) -> C.t E A -> C.t E A -> Type :=
-  | Nil : forall x, t [] x x
-  | Cons : forall e es x x' x'',
-    t es x x' -> Step.t e x' x'' ->
-    t (e :: es) x x''.
+Module Steps.
+  Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
+    : Trace.t E (C.t E A) -> Prop :=
+  | Nil : t x (Trace.Ret x)
+  | Cons : forall c k trace,
+    Step.t c x k -> (forall a, t (k a) (trace a)) ->
+    t x (Trace.Call c trace).
 End Steps.
 
 Module LastSteps.
-  Inductive t {E : Effect.t} {A : Type}
-    (es : list (Event.t E)) (x : C.t E A) (v : A) : Type :=
-  | New : forall x', Steps.t es x x' -> LastStep.t x' v -> t es x v.
-End LastSteps.*)
+  Inductive t {E : Effect.t} {A : Type} (x : C.t E A) : Trace.t E A -> Prop :=
+  | Nil : forall v, LastStep.t x v -> t x (Trace.Ret v)
+  | Cons : forall c k trace,
+    Step.t c x k -> (forall a, t (k a) (trace a)) ->
+    t x (Trace.Call c trace).
+End LastSteps.
 
 Fixpoint compile {E} {A} (x : C.t E A) : Choose.t E A :=
   match x with
@@ -297,9 +299,3 @@ Module Equiv.
       now apply step.
   Qed.
 End Equiv.
-
-(*Module DeadLockFree.
-  Definition t {E : Effect.t} {A : Type} (x : C.t E A) : Type :=
-    forall es x', Steps.t es x x' ->
-      {es' : list (Event.t E) & {v : A & LastSteps.t es' x' v}}.
-End DeadLockFree.*)
