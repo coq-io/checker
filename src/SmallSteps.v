@@ -46,7 +46,7 @@ Module Choose.
   Arguments Choose {E A} _ _.
 
   Module LastStep.
-    Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Type :=
+    Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Prop :=
     | Ret : forall v,
       t (Choose.Ret v) v
     | ChooseLeft : forall (x1 x2 : Choose.t E A) (v : A),
@@ -59,7 +59,7 @@ Module Choose.
 
   Module Step.
     Inductive t {E : Effect.t} (c : Effect.command E) {A : Type}
-      : Choose.t E A -> (Effect.answer E c -> Choose.t E A) -> Type :=
+      : Choose.t E A -> (Effect.answer E c -> Choose.t E A) -> Prop :=
     | Call : forall h, t c (Choose.Call c h) h
     | ChooseLeft : forall (x1 x2 : Choose.t E A) k,
       t c x1 k ->
@@ -77,7 +77,7 @@ Module Choose.
 
   Module Steps.
     Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
-      : Trace.t E (Choose.t E A) -> Type :=
+      : Trace.t E (Choose.t E A) -> Prop :=
     | Nil : t x (Trace.Ret x)
     | Cons : forall c k trace,
       Step.t c x k -> (forall a, t (k a) (trace a)) ->
@@ -86,7 +86,7 @@ Module Choose.
 
   Module LastSteps.
     Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
-      : Trace.t E A -> Type :=
+      : Trace.t E A -> Prop :=
     | Nil : forall v, LastStep.t x v -> t x (Trace.Ret v)
     | Cons : forall c k trace,
       Step.t c x k -> (forall a, t (k a) (trace a)) ->
@@ -163,7 +163,7 @@ Module Choose.
         now apply map.
       - apply LastStep.ChooseRight.
         now apply map.
-    Defined.
+    Qed.
 
     Fixpoint bind {E} c {A B} (x : t E A) (f : A -> t E B) k (H : Step.t c x k)
       : Step.t c (Choose.bind x f) (fun a => Choose.bind (k a) f).
@@ -173,7 +173,7 @@ Module Choose.
         now apply bind.
       - apply Step.ChooseRight.
         now apply bind.
-    Defined.
+    Qed.
 
     Fixpoint bind_last {E} c {A B} (x : t E A) (v : A) (f : A -> t E B) k
       (H_x : LastStep.t x v) (H_f : Step.t c (f v) k)
@@ -184,7 +184,7 @@ Module Choose.
         now apply bind_last with (v := v).
       - apply Step.ChooseRight.
         now apply bind_last with (v := v).
-    Defined.
+    Qed.
 
     Fixpoint bind_last_last {E} {A B} (x : t E A) (v_x : A) (f : A -> t E B)
       (v_y : B) (H_x : LastStep.t x v_x) (H_f : LastStep.t (f v_x) v_y)
@@ -195,7 +195,7 @@ Module Choose.
         now apply bind_last_last with (v_x := v).
       - apply LastStep.ChooseRight.
         now apply bind_last_last with (v_x := v).
-    Defined.
+    Qed.
 
     Fixpoint join_right {E} c {A B} (x : t E A) (y : t E B) k (H : Step.t c y k)
       : Step.t c (Choose.join_right x y) (fun a => Choose.join x (k a)).
@@ -205,7 +205,7 @@ Module Choose.
         now apply join_right.
       - apply Step.ChooseRight.
         now apply join_right.
-    Defined.
+    Qed.
 
     Fixpoint join_left {E} c {A B} (x : t E A) (y : t E B) k (H : Step.t c x k)
       : Step.t c (Choose.join_left x y) (fun a => Choose.join (k a) y).
@@ -215,7 +215,7 @@ Module Choose.
         now apply join_left.
       - apply Step.ChooseRight.
         now apply join_left.
-    Defined.
+    Qed.
 
     Fixpoint join_left_last {E} {A B} (x : t E A) (v_x : A) (y : t E B) (v_y : B)
       (H_x : LastStep.t x v_x) (H_y : LastStep.t y v_y)
@@ -226,12 +226,12 @@ Module Choose.
         now apply join_left_last.
       - apply LastStep.ChooseRight.
         now apply join_left_last.
-    Defined.
+    Qed.
   End Equiv.
 End Choose.
 
 Module LastStep.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Type :=
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
   | Ret : forall A (v : A),
     t (C.Ret E v) v
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
@@ -250,7 +250,7 @@ End LastStep.
 
 Module Step.
   Inductive t {E : Effect.t} (c : Effect.command E)
-    : forall {A}, C.t E A -> (Effect.answer E c -> C.t E A) -> Type :=
+    : forall {A}, C.t E A -> (Effect.answer E c -> C.t E A) -> Prop :=
   | Call : t c (C.Call c) (fun a => C.Ret _ a)
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B) k,
     t c x k ->
@@ -312,7 +312,7 @@ Module Equiv.
       apply Choose.Equiv.join_left_last.
       + now apply last_step.
       + now apply last_step.
-  Defined.
+  Qed.
 
   Fixpoint step {E} c {A} (x : C.t E A) k (H : Step.t c x k)
     : Choose.Step.t c (compile x) (fun a => compile (k a)).
@@ -333,7 +333,7 @@ Module Equiv.
     - apply Choose.Step.ChooseRight.
       apply Choose.Equiv.join_right.
       now apply step.
-  Defined.
+  Qed.
 End Equiv.
 
 (*Module DeadLockFree.
