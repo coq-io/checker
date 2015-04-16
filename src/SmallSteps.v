@@ -299,6 +299,14 @@ Module Join.
       t e y y' ->
       t e (Join.Join x y) (Join.Join x y').
   End Step.
+
+  Fixpoint compile {E} {A} (x : t E A) : Choose.t E A :=
+    match x with
+    | Ret _ v => Choose.Ret v
+    | Call _ c h => Choose.Call c (fun a => compile (h a))
+    | Choose _ x1 x2 => Choose.Choose (compile x1) (compile x2)
+    | Join _ _ x y => Choose.join (compile x) (compile y)
+    end.
 End Join.
 
 Module Choose.
