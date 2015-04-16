@@ -69,6 +69,24 @@ Module Choose.
       t c (Choose.Choose x1 x2) k.
   End Step.
 
+  Module Steps.
+    Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
+      : Trace.t E (Choose.t E A) -> Type :=
+    | Nil : t x (Trace.Ret x)
+    | Cons : forall c k trace,
+      Step.t c x k -> (forall a, t (k a) (trace a)) ->
+      t x (Trace.Call c trace).
+  End Steps.
+
+  Module LastSteps.
+    Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
+      : Trace.t E A -> Type :=
+    | Nil : forall v, LastStep.t x v -> t x (Trace.Ret v)
+    | Cons : forall c k trace,
+      Step.t c x k -> (forall a, t (k a) (trace a)) ->
+      t x (Trace.Call c trace).
+  End LastSteps.
+
   (*Module Steps.
     Inductive t {E : Effect.t} {A : Type}
       : list (Event.t E) -> Choose.t E A -> Choose.t E A -> Type :=
