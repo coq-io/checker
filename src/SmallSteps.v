@@ -1,12 +1,7 @@
 Require Import Coq.Lists.List.
+Require Import Io.All.
 
 Import ListNotations.
-
-Module Effect.
-  Record t := New {
-    command : Type;
-    answer : command -> Type }.
-End Effect.
 
 Module Event.
   Record t (E : Effect.t) := New {
@@ -162,107 +157,93 @@ Module Choose.
   End Equiv.
 End Choose.
 
-Module Join.
-  Inductive t (E : Effect.t) : Type -> Type :=
-  | Ret : forall A, A -> t E A
-  | Call : forall c, t E (Effect.answer E c)
-  | Let : forall A B, t E A -> (A -> t E B) -> t E B
-  | Choose : forall A, t E A -> t E A -> t E A
-  | Join : forall A B, t E A -> t E B -> t E (A * B).
-  Arguments Ret {E A} _.
-  Arguments Call {E} _.
-  Arguments Let {E A B} _ _.
-  Arguments Choose {E A} _ _.
-  Arguments Join {E A B} _ _.
+Module LastStep.
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Type :=
+  | Ret : forall A (v : A),
+    t (C.Ret E v) v
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
+    t x v_x -> t (f v_x) v_y ->
+    t (C.Let _ _ x f) v_y
+  | ChooseLeft : forall A (x1 x2 : C.t E A) (v : A),
+    t x1 v ->
+    t (C.Choose _ x1 x2) v
+  | ChooseRight : forall A (x1 x2 : C.t E A) (v : A),
+    t x2 v ->
+    t (C.Choose _ x1 x2) v
+  | Join : forall A B (x : C.t E A) (v_x : A) (y : C.t E B) (v_y : B),
+    t x v_x -> t y v_y ->
+    t (C.Join _ _ x y) (v_x, v_y).
+End LastStep.
 
-  Module LastStep.
-    Inductive t {E : Effect.t} : forall {A}, Join.t E A -> A -> Type :=
-    | Ret : forall A (v : A),
-      t (Join.Ret v) v
-    | Let : forall A B (x : Join.t E A) (f : A -> Join.t E B) (v_x : A) (v_y : B),
-      t x v_x -> t (f v_x) v_y ->
-      t (Join.Let x f) v_y
-    | ChooseLeft : forall A (x1 x2 : Join.t E A) (v : A),
-      t x1 v ->
-      t (Join.Choose x1 x2) v
-    | ChooseRight : forall A (x1 x2 : Join.t E A) (v : A),
-      t x2 v ->
-      t (Join.Choose x1 x2) v
-    | Join : forall A B (x : Join.t E A) (v_x : A) (y : Join.t E B) (v_y : B),
-      t x v_x -> t y v_y ->
-      t (Join.Join x y) (v_x, v_y).
-  End LastStep.
+Module Step.
+  Inductive t {E : Effect.t} (e : Event.t E)
+    : forall {A}, C.t E A -> C.t E A -> Type :=
+  | Call : t e (C.Call (Event.c e)) (C.Ret _ (Event.a e))
+  | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
+    t e x x' ->
+    t e (C.Let _ _ x f) (C.Let _ _ x' f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
+    LastStep.t x v -> t e (f v) y ->
+    t e (C.Let _ _ x f) y
+  | ChooseLeft : forall A (x1 x2 : C.t E A) x1',
+    t e x1 x1' ->
+    t e (C.Choose _ x1 x2) x1'
+  | ChooseRight : forall A (x1 x2 : C.t E A) x2',
+    t e x2 x2' ->
+    t e (C.Choose _ x1 x2) x2'
+  | JoinLeft : forall A B (x x' : C.t E A) (y : C.t E B),
+    t e x x' ->
+    t e (C.Join _ _ x y) (C.Join _ _ x' y)
+  | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
+    t e y y' ->
+    t e (C.Join _ _ x y) (C.Join _ _ x y').
+End Step.
 
-  Module Step.
-    Inductive t {E : Effect.t} (e : Event.t E)
-      : forall {A}, Join.t E A -> Join.t E A -> Type :=
-    | Call : t e (Join.Call (Event.c e)) (Join.Ret (Event.a e))
-    | Let : forall A B (x x' : Join.t E A) (f : A -> Join.t E B),
-      t e x x' ->
-      t e (Join.Let x f) (Join.Let x' f)
-    | LetDone : forall A B (x : Join.t E A) (v : A) (f : A -> Join.t E B) (y : Join.t E B),
-      LastStep.t x v -> t e (f v) y ->
-      t e (Join.Let x f) y
-    | ChooseLeft : forall A (x1 x2 : Join.t E A) x1',
-      t e x1 x1' ->
-      t e (Join.Choose x1 x2) x1'
-    | ChooseRight : forall A (x1 x2 : Join.t E A) x2',
-      t e x2 x2' ->
-      t e (Join.Choose x1 x2) x2'
-    | JoinLeft : forall A B (x x' : Join.t E A) (y : Join.t E B),
-      t e x x' ->
-      t e (Join.Join x y) (Join.Join x' y)
-    | JoinRight : forall A B (x : Join.t E A) (y y' : Join.t E B),
-      t e y y' ->
-      t e (Join.Join x y) (Join.Join x y').
-  End Step.
+Fixpoint compile {E} {A} (x : C.t E A) : Choose.t E A :=
+  match x with
+  | C.Ret _ v => Choose.Ret v
+  | C.Call c => Choose.Call c Choose.Ret
+  | C.Let _ _ x f => Choose.bind (compile x) (fun x => compile (f x))
+  | C.Choose _ x1 x2 => Choose.Choose (compile x1) (compile x2)
+  | C.Join _ _ x y => Choose.join (compile x) (compile y)
+  end.
 
-  Fixpoint compile {E} {A} (x : t E A) : Choose.t E A :=
-    match x with
-    | Ret _ v => Choose.Ret v
-    | Call c => Choose.Call c Choose.Ret
-    | Let _ _ x f => Choose.bind (compile x) (fun x => compile (f x))
-    | Choose _ x1 x2 => Choose.Choose (compile x1) (compile x2)
-    | Join _ _ x y => Choose.join (compile x) (compile y)
-    end.
+Module Equiv.
+  Fixpoint last_step {E} {A} (x : C.t E A) (v : A) (H : LastStep.t x v)
+    : Choose.LastStep.t (compile x) v.
+    destruct H.
+    - apply Choose.LastStep.Ret.
+    - apply (Choose.Equiv.bind_last_last _ v_x).
+      + now apply last_step.
+      + now apply last_step.
+    - apply Choose.LastStep.ChooseLeft.
+      now apply last_step.
+    - apply Choose.LastStep.ChooseRight.
+      now apply last_step.
+    - apply Choose.LastStep.ChooseLeft.
+      apply Choose.Equiv.join_left_last.
+      + now apply last_step.
+      + now apply last_step.
+  Defined.
 
-  Module Equiv.
-    Fixpoint last_step {E} {A} (x : t E A) (v : A) (H : LastStep.t x v)
-      : Choose.LastStep.t (compile x) v.
-      destruct H.
-      - apply Choose.LastStep.Ret.
-      - apply (Choose.Equiv.bind_last_last _ v_x).
-        + now apply last_step.
-        + now apply last_step.
-      - apply Choose.LastStep.ChooseLeft.
-        now apply last_step.
-      - apply Choose.LastStep.ChooseRight.
-        now apply last_step.
-      - apply Choose.LastStep.ChooseLeft.
-        apply Choose.Equiv.join_left_last.
-        + now apply last_step.
-        + now apply last_step.
-    Defined.
-
-    Fixpoint step {E} (e : Event.t E) {A} (x x' : t E A) (H : Step.t e x x')
-      : Choose.Step.t e (compile x) (compile x').
-      destruct H.
-      - apply Choose.Step.Call.
-      - apply Choose.Equiv.bind.
-        now apply step.
-      - apply (Choose.Equiv.bind_last e _ v).
-        + now apply Equiv.last_step.
-        + now apply step.
-      - apply Choose.Step.ChooseLeft.
-        now apply step.
-      - apply Choose.Step.ChooseRight.
-        now apply step.
-      - apply Choose.Step.ChooseLeft.
-        apply Choose.Equiv.join_left.
-        now apply step.
-      - apply Choose.Step.ChooseRight.
-        apply Choose.Equiv.join_right.
-        now apply step.
-    Defined.
-  End Equiv.
-End Join.
+  Fixpoint step {E} (e : Event.t E) {A} (x x' : C.t E A) (H : Step.t e x x')
+    : Choose.Step.t e (compile x) (compile x').
+    destruct H.
+    - apply Choose.Step.Call.
+    - apply Choose.Equiv.bind.
+      now apply step.
+    - apply (Choose.Equiv.bind_last e _ v).
+      + now apply Equiv.last_step.
+      + now apply step.
+    - apply Choose.Step.ChooseLeft.
+      now apply step.
+    - apply Choose.Step.ChooseRight.
+      now apply step.
+    - apply Choose.Step.ChooseLeft.
+      apply Choose.Equiv.join_left.
+      now apply step.
+    - apply Choose.Step.ChooseRight.
+      apply Choose.Equiv.join_right.
+      now apply step.
+  Defined.
+End Equiv.
