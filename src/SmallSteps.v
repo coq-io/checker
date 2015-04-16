@@ -28,6 +28,14 @@ End Model.*)
   Arguments state {E S} _ _ _.
 End Model.*)
 
+Module Trace.
+  Inductive t (E : Effect.t) (T : Type) : Type :=
+  | Ret : T -> t E T
+  | Call : forall c, (Effect.answer E c -> t E T) -> t E T.
+  Arguments Ret {E T} _.
+  Arguments Call {E T} _ _.
+End Trace.
+
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
   | Ret : A -> t E A
