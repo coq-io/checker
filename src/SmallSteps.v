@@ -199,6 +199,21 @@ Module Step.
     t e (C.Join _ _ x y) (C.Join _ _ x y').
 End Step.
 
+Module Steps.
+  Inductive t {E : Effect.t} {A : Type}
+    : list (Event.t E) -> C.t E A -> C.t E A -> Type :=
+  | Nil : forall x, t [] x x
+  | Cons : forall e es x x' x'',
+    t es x x' -> Step.t e x' x'' ->
+    t (e :: es) x x''.
+End Steps.
+
+Module LastSteps.
+  Inductive t {E : Effect.t} {A : Type}
+    (es : list (Event.t E)) (x : C.t E A) (v : A) : Type :=
+  | New : forall x', Steps.t es x x' -> LastStep.t x' v -> t es x v.
+End LastSteps.
+
 Fixpoint compile {E} {A} (x : C.t E A) : Choose.t E A :=
   match x with
   | C.Ret _ v => Choose.Ret v
@@ -247,3 +262,14 @@ Module Equiv.
       now apply step.
   Defined.
 End Equiv.
+
+Module Model.
+  Definition t (E : Effect.t) (S : Type) : Type :=
+    forall c, S -> option (Effect.answer E c * S).
+End Model.
+
+Module DeadLockFree.
+  Definition t {E : Effect.t} {A : Type} (x : C.t E A) : Type :=
+    forall es x', Steps.t es x x' ->
+      {es' : list (Event.t E) & {v : A & LastSteps.t es' x' v}}.
+End DeadLockFree.
