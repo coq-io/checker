@@ -227,6 +227,14 @@ Module Choose.
       now apply equiv_right_last.
   Defined.*)
 
+  (*Fixpoint equiv_right_last {E} {A B} (x : t E A) (y : t E B) (v : B)
+    (H : LastStep.t y v) {struct H}
+    : join_right x y = map x (fun x => (x, v)).
+    destruct H.
+    - reflexivity.
+    - simpl.
+  Defined.*)
+
   Fixpoint equiv_left {E} (e : Event.t E) {A B} (x x' : t E A) (y : t E B)
     (H : Step.t e x x') {struct H} : Step.t e (join_left x y) (join x' y).
     destruct H as [h | x1 x2 x1' Hx1x1' | x1 x2 x2' Hx2x2'].
@@ -323,6 +331,17 @@ Module Join.
       apply Choose.equiv_right.
       now apply equiv_step.
   Defined.
+
+  (*Fixpoint equiv_last_step {E} {A} (x : t E A) (v : A) (H : LastStep.t x v)
+    : Choose.LastStep.t (compile x) v.
+    destruct H.
+    - apply Choose.LastStep.Ret.
+    - apply Choose.LastStep.ChooseLeft.
+      now apply equiv_last_step.
+    - apply Choose.LastStep.ChooseRight.
+      now apply equiv_last_step.
+    - 
+  Defined.*)
 End Join.
 
 Module Choose.
