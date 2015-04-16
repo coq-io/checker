@@ -206,30 +206,30 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} (e : Event.t E)
-    : forall {A}, C.t E A -> C.t E A -> Type :=
-  | Call : t e (C.Call (Event.c e)) (C.Ret _ (Event.a e))
-  | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
-    t e x x' ->
-    t e (C.Let _ _ x f) (C.Let _ _ x' f)
-  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
-    LastStep.t x v -> t e (f v) y ->
-    t e (C.Let _ _ x f) y
-  | ChooseLeft : forall A (x1 x2 : C.t E A) x1',
-    t e x1 x1' ->
-    t e (C.Choose _ x1 x2) x1'
-  | ChooseRight : forall A (x1 x2 : C.t E A) x2',
-    t e x2 x2' ->
-    t e (C.Choose _ x1 x2) x2'
-  | JoinLeft : forall A B (x x' : C.t E A) (y : C.t E B),
-    t e x x' ->
-    t e (C.Join _ _ x y) (C.Join _ _ x' y)
-  | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
-    t e y y' ->
-    t e (C.Join _ _ x y) (C.Join _ _ x y').
+  Inductive t {E : Effect.t} (c : Effect.command E)
+    : forall {A}, C.t E A -> (Effect.answer E c -> C.t E A) -> Type :=
+  | Call : t c (C.Call c) (fun a => C.Ret _ a)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B) k,
+    t c x k ->
+    t c (C.Let _ _ x f) (fun a => C.Let _ _ (k a) f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) k,
+    LastStep.t x v -> t c (f v) k ->
+    t c (C.Let _ _ x f) k
+  | ChooseLeft : forall A (x1 x2 : C.t E A) k,
+    t c x1 k ->
+    t c (C.Choose _ x1 x2) k
+  | ChooseRight : forall A (x1 x2 : C.t E A) k,
+    t c x2 k ->
+    t c (C.Choose _ x1 x2) k
+  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B) k,
+    t c x k ->
+    t c (C.Join _ _ x y) (fun a => C.Join _ _ (k a) y)
+  | JoinRight : forall A B (x : C.t E A) (y : C.t E B) k,
+    t c y k ->
+    t c (C.Join _ _ x y) (fun a => C.Join _ _ x (k a)).
 End Step.
 
-Module Steps.
+(*Module Steps.
   Inductive t {E : Effect.t} {A : Type}
     : list (Event.t E) -> C.t E A -> C.t E A -> Type :=
   | Nil : forall x, t [] x x
@@ -242,7 +242,7 @@ Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
     (es : list (Event.t E)) (x : C.t E A) (v : A) : Type :=
   | New : forall x', Steps.t es x x' -> LastStep.t x' v -> t es x v.
-End LastSteps.
+End LastSteps.*)
 
 Fixpoint compile {E} {A} (x : C.t E A) : Choose.t E A :=
   match x with
@@ -271,13 +271,13 @@ Module Equiv.
       + now apply last_step.
   Defined.
 
-  Fixpoint step {E} (e : Event.t E) {A} (x x' : C.t E A) (H : Step.t e x x')
-    : Choose.Step.t e (compile x) (compile x').
+  Fixpoint step {E} c {A} (x : C.t E A) k (H : Step.t c x k)
+    : Choose.Step.t c (compile x) (fun a => compile (k a)).
     destruct H.
     - apply Choose.Step.Call.
     - apply Choose.Equiv.bind.
       now apply step.
-    - apply (Choose.Equiv.bind_last e _ v).
+    - apply (Choose.Equiv.bind_last c _ v).
       + now apply Equiv.last_step.
       + now apply step.
     - apply Choose.Step.ChooseLeft.
@@ -293,8 +293,8 @@ Module Equiv.
   Defined.
 End Equiv.
 
-Module DeadLockFree.
+(*Module DeadLockFree.
   Definition t {E : Effect.t} {A : Type} (x : C.t E A) : Type :=
     forall es x', Steps.t es x x' ->
       {es' : list (Event.t E) & {v : A & LastSteps.t es' x' v}}.
-End DeadLockFree.
+End DeadLockFree.*)
