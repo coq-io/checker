@@ -17,16 +17,16 @@ End Event.*)
     forall c, S -> option (Effect.answer E c * S).
 End Model.*)
 
-(*Module Model.
+Module Model.
   Record t (E : Effect.t) (S : Type) := New {
-    condition : Effect.command E -> S -> bool;
-    answer : forall c, S -> Effect.answer E c;
-    state : Effect.command E -> S -> S }.
+    pre : Effect.command E -> S -> Prop;
+    answer : forall c s, pre c s -> Effect.answer E c;
+    state : forall c s, pre c s -> S }.
   Arguments New {E S} _ _ _.
-  Arguments condition {E S} _ _ _.
-  Arguments answer {E S} _ _ _.
-  Arguments state {E S} _ _ _.
-End Model.*)
+  Arguments pre {E S} _ _ _.
+  Arguments answer {E S} _ _ _ _.
+  Arguments state {E S} _ _ _ _.
+End Model.
 
 Module Trace.
   Inductive t (E : Effect.t) (T : Type) : Type :=
@@ -69,6 +69,12 @@ Module Choose.
       t c (Choose.Choose x1 x2) k.
   End Step.
 
+  (*Module ModelStep.
+    Inductive t {E S} (m : Model.t E S) (c : Effect.command E) (s s' : S) {A}
+      (x x')
+      : Choose.t E A -> (Effect.answer E c -> Choose.t E A) -> Type :=
+  End ModelStep.*)
+
   Module Steps.
     Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
       : Trace.t E (Choose.t E A) -> Type :=
@@ -87,20 +93,31 @@ Module Choose.
       t x (Trace.Call c trace).
   End LastSteps.
 
-  (*Module Steps.
-    Inductive t {E : Effect.t} {A : Type}
-      : list (Event.t E) -> Choose.t E A -> Choose.t E A -> Type :=
-    | Nil : forall x, t [] x x
-    | Cons : forall e es x x' x'',
-      t es x x' -> Step.t e x' x'' ->
-      t (e :: es) x x''.
-  End Steps.
+  (*Module ValidSteps.
+    Inductive t {E : Effect.t} {S : Type} (m : Model.t E S) (s : S) {A : Type}
+      : Trace.t E (Choose.t E A) -> Type :=
+  End ValidSteps.
 
-  Module LastSteps.
-    Inductive t {E : Effect.t} {A : Type}
-      (es : list (Event.t E)) (x : Choose.t E A) (v : A) : Type :=
-    | New : forall x', Steps.t es x x' -> LastStep.t x' v -> t es x v.
-  End LastSteps.*)
+  Module ModelSteps.
+    Inductive t {E : Effect.t} {S : Type} (m : Model.t E S) (s : S) {A : Type}
+      (x : Choose.t E A) : Trace.t E (Choose.t E A) -> Type :=
+    | Nil : t m s x (Trace.Ret x)
+    | Cons : forall c k trace,
+      Step.t c x k -> Model.pre m c s -> .
+      : Steps.t x trace -> Type :=
+    | Nil : t m s (Steps.Nil x).
+      : Trace.t E A -> Type :=.
+  End ModelSteps.
+
+  Fixpoint run (E : Effect.t) (A : Type) (x : t E A) (trace : Trace.t E (t E A)) (H : Steps.t x trace) (S : Type)
+    (m : Model.t E S) (s : S) : option S.
+  Defined.*)
+
+  (*Module ModelSteps.
+    Inductive t {E S} (m : Model.t E S) (c : Effect.command E) (s s' : S) {A}
+      (x x')
+      : Choose.t E A -> (Effect.answer E c -> Choose.t E A) -> Type :=
+  End ModelSteps.*)
 
   Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
     match x with
