@@ -251,7 +251,7 @@ Module LastSteps.
     t x (Trace.Call c trace).
 End LastSteps.
 
-Fixpoint compile {E} {A} (x : C.t E A) : Choose.t E A :=
+Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   match x with
   | C.Ret _ v => Choose.Ret v
   | C.Call c => Choose.Call c Choose.Ret
@@ -261,7 +261,7 @@ Fixpoint compile {E} {A} (x : C.t E A) : Choose.t E A :=
   end.
 
 Module Equiv.
-  Fixpoint last_step {E} {A} (x : C.t E A) (v : A) (H : LastStep.t x v)
+  Fixpoint last_step {E A} (x : C.t E A) (v : A) (H : LastStep.t x v)
     : Choose.LastStep.t (compile x) v.
     destruct H.
     - apply Choose.LastStep.Ret.
@@ -297,5 +297,16 @@ Module Equiv.
     - apply Choose.Step.ChooseRight.
       apply Choose.Equiv.join_right.
       now apply step.
+  Qed.
+
+  Fixpoint traces {E A} (x : C.t E A) (trace : Trace.t E A)
+    (H : LastSteps.t x trace) : Choose.LastSteps.t (compile x) trace.
+    destruct H.
+    - apply Choose.LastSteps.Nil.
+      now apply last_step.
+    - apply (Choose.LastSteps.Cons _ _ (fun a => compile (k a))).
+      + now apply step.
+      + intro.
+        now apply traces.
   Qed.
 End Equiv.
