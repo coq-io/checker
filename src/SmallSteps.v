@@ -245,6 +245,11 @@ Module Choose.
       now apply equiv_left.
   Defined.
 
+  Definition equiv_join_last {E} {A B} (x : t E A) (v_x : A) (y : t E B) (v_y : B)
+    (H_x : LastStep.t x v_x) (H_y : LastStep.t y v_y)
+    : LastStep.t (join x y) (v_x, v_y).
+  Admitted.
+
   (*Fixpoint equiv_left_last {E} {A B} (x : t E A) (x' : A) (y : t E B)
     (H : LastStep.t x x') {struct H} : Step.t e (join_left x y) (map y (fun y => (x', y))).
     destruct H as [h | x1 x2 x1' Hx1x1' | x1 x2 x2' Hx2x2'].
@@ -254,6 +259,45 @@ Module Choose.
     - apply Step.ChooseRight.
       now apply equiv_left_last.
   Defined.*)
+
+  Fixpoint bind {E} {A B} (x : t E A) (f : A -> t E B) : t E B :=
+    match x with
+    | Ret v => f v
+    | Call c h => Call c (fun a => bind (h a) f)
+    | Choose x1 x2 => Choose (bind x1 f) (bind x2 f)
+    end.
+
+  Fixpoint equiv_bind {E} (e : Event.t E) {A B} (x x' : t E A) (f : A -> t E B)
+    (H : Step.t e x x') : Step.t e (bind x f) (bind x' f).
+    destruct H.
+    - apply (Step.Call e).
+    - apply Step.ChooseLeft.
+      now apply equiv_bind.
+    - apply Step.ChooseRight.
+      now apply equiv_bind.
+  Defined.
+
+  Fixpoint equiv_bind_last {E} (e : Event.t E) {A B} (x : t E A) (v : A)
+    (f : A -> t E B) (y : t E B) (H_x : LastStep.t x v) (H_f : Step.t e (f v) y)
+    : Step.t e (bind x f) y.
+    destruct H_x.
+    - exact H_f.
+    - apply Step.ChooseLeft.
+      now apply equiv_bind_last with (v := v).
+    - apply Step.ChooseRight.
+      now apply equiv_bind_last with (v := v).
+  Defined.
+
+  Fixpoint equiv_bind_last_last {E} {A B} (x : t E A) (v_x : A) (f : A -> t E B)
+    (v_y : B) (H_x : LastStep.t x v_x) (H_f : LastStep.t (f v_x) v_y)
+    : LastStep.t (bind x f) v_y.
+    destruct H_x.
+    - exact H_f.
+    - apply LastStep.ChooseLeft.
+      now apply equiv_bind_last_last with (v_x := v).
+    - apply LastStep.ChooseRight.
+      now apply equiv_bind_last_last with (v_x := v).
+  Defined.
 End Choose.
 
 Module Join.
@@ -302,9 +346,9 @@ Module Join.
     | Let : forall A B (x x' : Join.t E A) (f : A -> Join.t E B),
       t e x x' ->
       t e (Join.Let x f) (Join.Let x' f)
-    | LetDone : forall A B (x : Join.t E A) (v : A) (f : A -> Join.t E B),
-      LastStep.t x v ->
-      t e (Join.Let x f) (f v)
+    | LetDone : forall A B (x : Join.t E A) (v : A) (f : A -> Join.t E B) (y : Join.t E B),
+      LastStep.t x v -> t e (f v) y ->
+      t e (Join.Let x f) y
     | ChooseLeft : forall A (x1 x2 : Join.t E A) x1',
       t e x1 x1' ->
       t e (Join.Choose x1 x2) x1'
@@ -323,14 +367,36 @@ Module Join.
     match x with
     | Ret _ v => Choose.Ret v
     | Call _ c h => Choose.Call c (fun a => compile (h a))
+    | Let _ _ x f => Choose.bind (compile x) (fun x => compile (f x))
     | Choose _ x1 x2 => Choose.Choose (compile x1) (compile x2)
     | Join _ _ x y => Choose.join (compile x) (compile y)
     end.
 
+  Fixpoint equiv_last_step {E} {A} (x : t E A) (v : A) (H : LastStep.t x v)
+    : Choose.LastStep.t (compile x) v.
+    destruct H.
+    - apply Choose.LastStep.Ret.
+    - apply (Choose.equiv_bind_last_last _ v_x).
+      + now apply equiv_last_step.
+      + now apply equiv_last_step.
+    - apply Choose.LastStep.ChooseLeft.
+      now apply equiv_last_step.
+    - apply Choose.LastStep.ChooseRight.
+      now apply equiv_last_step.
+    - apply Choose.equiv_join_last.
+      + now apply equiv_last_step.
+      + now apply equiv_last_step.
+  Defined.
+
   Fixpoint equiv_step {E} (e : Event.t E) {A} (x x' : t E A) (H : Step.t e x x')
-    : Choose.Step.t e (compile x) (compile x').
+    {struct H} : Choose.Step.t e (compile x) (compile x').
     destruct H.
     - apply (Choose.Step.Call e).
+    - apply Choose.equiv_bind.
+      now apply equiv_step.
+    - apply (Choose.equiv_bind_last e _ v).
+      + now apply equiv_last_step.
+      + now apply equiv_step.
     - apply Choose.Step.ChooseLeft.
       now apply equiv_step.
     - apply Choose.Step.ChooseRight.
