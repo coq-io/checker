@@ -307,6 +307,22 @@ Module Join.
     | Choose _ x1 x2 => Choose.Choose (compile x1) (compile x2)
     | Join _ _ x y => Choose.join (compile x) (compile y)
     end.
+
+  Fixpoint equiv_step {E} (e : Event.t E) {A} (x x' : t E A) (H : Step.t e x x')
+    : Choose.Step.t e (compile x) (compile x').
+    destruct H.
+    - apply (Choose.Step.Call e).
+    - apply Choose.Step.ChooseLeft.
+      now apply equiv_step.
+    - apply Choose.Step.ChooseRight.
+      now apply equiv_step.
+    - apply Choose.Step.ChooseLeft.
+      apply Choose.equiv_left.
+      now apply equiv_step.
+    - apply Choose.Step.ChooseRight.
+      apply Choose.equiv_right.
+      now apply equiv_step.
+  Defined.
 End Join.
 
 Module Choose.
