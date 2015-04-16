@@ -20,15 +20,20 @@ Module Model.
   Arguments pre {E S} _ _ _.
   Arguments answer {E S} _ _ _ _.
   Arguments state {E S} _ _ _ _.
+
+  Module Dec.
+    Definition t {E S} (m : Model.t E S) : Type :=
+      forall c s, {Model.pre m c s} + {~ Model.pre m c s}.
+  End Dec.
 End Model.
 
-Module DeadLockFree.
-  Inductive t {E S T} (m : Model.t E S) : S -> Trace.t E T -> Prop :=
-  | Ret : forall s x, t m s (Trace.Ret x)
-  | Call : forall s c k (H : Model.pre m c s),
-    t m (Model.state m c s H) (k (Model.answer m c s H)) ->
-    t m s (Trace.Call c k).
-End DeadLockFree.
+Module NotStuck.
+  Inductive t {E S T} (m : Model.t E S) : S -> Trace.t E T -> S -> T -> Prop :=
+  | Ret : forall s x, t m s (Trace.Ret x) s x
+  | Call : forall s s' x c k (H : Model.pre m c s),
+    t m (Model.state m c s H) (k (Model.answer m c s H)) s' x ->
+    t m s (Trace.Call c k) s' x.
+End NotStuck.
 
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
@@ -80,6 +85,13 @@ Module Choose.
       Step.t c x k -> (forall a, t (k a) (trace a)) ->
       t x (Trace.Call c trace).
   End LastSteps.
+
+  Module DeadLockFree.
+    Definition t {E S} (m : Model.t E S) (s : S) {A} (x : t E A) : Prop :=
+      forall trace s' x', Steps.t x trace -> NotStuck.t m s trace s' x' ->
+      exists trace', exists s'', exists v,
+        LastSteps.t x' trace' /\ NotStuck.t m s' trace s'' v.
+  End DeadLockFree.
 
   Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
     match x with
@@ -190,6 +202,13 @@ Module Choose.
         now apply join_left_last.
     Qed.
   End Equiv.
+
+  Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
+    (x : t E A) : bool.
+    destruct x as [v | c h | x1 x2].
+    - exact true.
+    - 
+  Defined.
 End Choose.
 
 Module LastStep.
@@ -299,7 +318,7 @@ Module Equiv.
       now apply step.
   Qed.
 
-  Fixpoint traces {E A} (x : C.t E A) (trace : Trace.t E A)
+  Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : LastSteps.t x trace) : Choose.LastSteps.t (compile x) trace.
     destruct H.
     - apply Choose.LastSteps.Nil.
@@ -307,6 +326,6 @@ Module Equiv.
     - apply (Choose.LastSteps.Cons _ _ (fun a => compile (k a))).
       + now apply step.
       + intro.
-        now apply traces.
+        now apply last_traces.
   Qed.
 End Equiv.
