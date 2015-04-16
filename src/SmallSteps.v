@@ -248,6 +248,59 @@ Module Choose.
   Defined.*)
 End Choose.
 
+Module Join.
+  Inductive t (E : Effect.t) : Type -> Type :=
+  | Ret : forall A, A -> t E A
+  | Call : forall A c, (Effect.answer E c -> t E A) -> t E A
+  | Choose : forall A, t E A -> t E A -> t E A
+  | Join : forall A B, t E A -> t E B -> t E (A * B).
+  Arguments Ret {E A} _.
+  Arguments Call {E A} _ _.
+  Arguments Choose {E A} _ _.
+  Arguments Join {E A B} _ _.
+
+  (*Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
+    match x with
+    | Ret _ v => Ret (f v)
+    | Call _ c h => Call c (fun a => map (h a) f)
+    | Choose _ x1 x2 => Choose (map x1 f) (map x2 f)
+    end.*)
+
+  Module LastStep.
+    Inductive t {E : Effect.t} : forall {A}, Join.t E A -> A -> Type :=
+    | Ret : forall A (v : A),
+      t (Join.Ret v) v
+    | ChooseLeft : forall A (x1 x2 : Join.t E A) (v : A),
+      t x1 v ->
+      t (Join.Choose x1 x2) v
+    | ChooseRight : forall A (x1 x2 : Join.t E A) (v : A),
+      t x2 v ->
+      t (Join.Choose x1 x2) v
+    | Join : forall A B (x : Join.t E A) (v_x : A) (y : Join.t E B) (v_y : B),
+      t x v_x -> t y v_y ->
+      t (Join.Join x y) (v_x, v_y).
+  End LastStep.
+
+  Module Step.
+    Inductive t {E : Effect.t} (e : Event.t E)
+      : forall {A}, Join.t E A -> Join.t E A -> Type :=
+    | Call : forall A h,
+      t (A := A) e (Join.Call (Event.c e) h) (h (Event.a e))
+    | ChooseLeft : forall A (x1 x2 : Join.t E A) x1',
+      t e x1 x1' ->
+      t e (Join.Choose x1 x2) x1'
+    | ChooseRight : forall A (x1 x2 : Join.t E A) x2',
+      t e x2 x2' ->
+      t e (Join.Choose x1 x2) x2'
+    | JoinLeft : forall A B (x x' : Join.t E A) (y : Join.t E B),
+      t e x x' ->
+      t e (Join.Join x y) (Join.Join x' y)
+    | JoinRight : forall A B (x : Join.t E A) (y y' : Join.t E B),
+      t e y y' ->
+      t e (Join.Join x y) (Join.Join x y').
+  End Step.
+End Join.
+
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
   | Ret : A -> t E A
