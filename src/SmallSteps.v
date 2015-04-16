@@ -146,31 +146,30 @@ End C.
 
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
+  | Ret : A -> t E A
   | Call : forall c, (Effect.answer E c -> t E A) -> t E A
-  | CallRet : forall c, (Effect.answer E c -> A) -> t E A
   | Choose : t E A -> t E A -> t E A.
+  Arguments Ret {E A} _.
   Arguments Call {E A} _ _.
-  Arguments CallRet {E A} _ _.
   Arguments Choose {E A} _ _.
 
   Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
     match x with
+    | Ret v => Ret (f v)
     | Call c h => Call c (fun a => map (h a) f)
-    | CallRet c h => CallRet c (fun a => f (h a))
     | Choose x1 x2 => Choose (map x1 f) (map x2 f)
     end.
 
   Module LastStep.
-    Inductive t {E : Effect.t} (e : Event.t E) {A : Type}
-      : Choose.t E A -> A -> Type :=
-    | CallRet : forall h,
-      t e (Choose.CallRet (Event.c e) h) (h (Event.a e))
-    | ChooseLeft : forall (x1 x2 : Choose.t E A) x1',
-      t e x1 x1' ->
-      t e (Choose.Choose x1 x2) x1'
-    | ChooseRight : forall (x1 x2 : Choose.t E A) x2',
-      t e x2 x2' ->
-      t e (Choose.Choose x1 x2) x2'.
+    Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Type :=
+    | Ret : forall v,
+      t (Choose.Ret v) v
+    | ChooseLeft : forall (x1 x2 : Choose.t E A) (v : A),
+      t x1 v ->
+      t (Choose.Choose x1 x2) v
+    | ChooseRight : forall (x1 x2 : Choose.t E A) (v : A),
+      t x2 v ->
+      t (Choose.Choose x1 x2) v.
   End LastStep.
 
   Module Step.
@@ -189,15 +188,15 @@ Module Choose.
   Fixpoint join_left_aux {E A B} (x : t E A) (y : t E B)
     (join_right : forall A, t E A -> t E (A * B)) : t E (A * B) :=
     match x with
+    | Ret v => map y (fun y => (v, y))
     | Call c h => Call c (fun a => Choose (join_left_aux (h a) y join_right) (join_right _ (h a)))
-    | CallRet c h => Call c (fun a => map y (fun y => (h a, y)))
     | Choose x1 x2 => Choose (join_left_aux x1 y join_right) (join_left_aux x2 y join_right)
     end.
 
   Fixpoint join_right {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
     match y with
+    | Ret v => map x (fun x => (x, v))
     | Call c h => Call c (fun a => Choose (join_left_aux x (h a) (fun _ x => join_right x (h a))) (join_right x (h a)))
-    | CallRet c h => Call c (fun a => map x (fun x => (x, h a)))
     | Choose y1 y2 => Choose (join_right x y1) (join_right x y2)
     end.
 
@@ -217,8 +216,8 @@ Module Choose.
       now apply equiv_right.
   Defined.
 
-  Fixpoint equiv_right_last {E} (e : Event.t E) {A B} (x : t E A) (y : t E B) (y' : B)
-    (H : LastStep.t e y y') {struct H}
+  (*Fixpoint equiv_right_last {E} {A B} (x : t E A) (y : t E B) (v : B)
+    (H : LastStep.t y y') {struct H}
     : Step.t e (join_right x y) (map x (fun x => (x, y'))).
     destruct H.
     - apply (Step.Call e).
@@ -226,7 +225,7 @@ Module Choose.
       now apply equiv_right_last.
     - apply Step.ChooseRight.
       now apply equiv_right_last.
-  Defined.
+  Defined.*)
 
   Fixpoint equiv_left {E} (e : Event.t E) {A B} (x x' : t E A) (y : t E B)
     (H : Step.t e x x') {struct H} : Step.t e (join_left x y) (join x' y).
@@ -238,15 +237,15 @@ Module Choose.
       now apply equiv_left.
   Defined.
 
-  Fixpoint equiv_left_last {E} (e : Event.t E) {A B} (x : t E A) (x' : A) (y : t E B)
-    (H : LastStep.t e x x') {struct H} : Step.t e (join_left x y) (map y (fun y => (x', y))).
+  (*Fixpoint equiv_left_last {E} {A B} (x : t E A) (x' : A) (y : t E B)
+    (H : LastStep.t x x') {struct H} : Step.t e (join_left x y) (map y (fun y => (x', y))).
     destruct H as [h | x1 x2 x1' Hx1x1' | x1 x2 x2' Hx2x2'].
     - apply (Step.Call e).
     - apply Step.ChooseLeft.
       now apply equiv_left_last.
     - apply Step.ChooseRight.
       now apply equiv_left_last.
-  Defined.
+  Defined.*)
 End Choose.
 
 Module Choose.
