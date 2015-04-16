@@ -12,6 +12,22 @@ Module Event.
   Arguments a {E} _.
 End Event.
 
+(*Module Model.
+  Definition t (E : Effect.t) (S : Type) : Type :=
+    forall c, S -> option (Effect.answer E c * S).
+End Model.*)
+
+Module Model.
+  Record t (E : Effect.t) (S : Type) := New {
+    condition : Effect.command E -> S -> bool;
+    answer : forall c, S -> Effect.answer E c;
+    state : Effect.command E -> S -> S }.
+  Arguments New {E S} _ _ _.
+  Arguments condition {E S} _ _ _.
+  Arguments answer {E S} _ _ _.
+  Arguments state {E S} _ _ _.
+End Model.
+
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
   | Ret : A -> t E A
@@ -45,6 +61,27 @@ Module Choose.
       t e x2 x2' ->
       t e (Choose.Choose x1 x2) x2'.
   End Step.
+
+  Module ModelStep.
+    Inductive t {E S} (m : Model.t E S) (s : S) (e : Event.t E) {A}
+      : Choose.t E A -> Choose.t E A -> Type :=
+    | New : Model.pre m 
+  End ModelStep.
+
+  Module Steps.
+    Inductive t {E : Effect.t} {A : Type}
+      : list (Event.t E) -> Choose.t E A -> Choose.t E A -> Type :=
+    | Nil : forall x, t [] x x
+    | Cons : forall e es x x' x'',
+      t es x x' -> Step.t e x' x'' ->
+      t (e :: es) x x''.
+  End Steps.
+
+  Module LastSteps.
+    Inductive t {E : Effect.t} {A : Type}
+      (es : list (Event.t E)) (x : Choose.t E A) (v : A) : Type :=
+    | New : forall x', Steps.t es x x' -> LastStep.t x' v -> t es x v.
+  End LastSteps.
 
   Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
     match x with
@@ -262,11 +299,6 @@ Module Equiv.
       now apply step.
   Defined.
 End Equiv.
-
-Module Model.
-  Definition t (E : Effect.t) (S : Type) : Type :=
-    forall c, S -> option (Effect.answer E c * S).
-End Model.
 
 Module DeadLockFree.
   Definition t {E : Effect.t} {A : Type} (x : C.t E A) : Type :=
