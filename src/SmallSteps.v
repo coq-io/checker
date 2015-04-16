@@ -9,6 +9,12 @@ Module Trace.
   | Call : forall c, (Effect.answer E c -> t E T) -> t E T.
   Arguments Ret {E T} _.
   Arguments Call {E T} _ _.
+
+  Fixpoint map {E T1 T2} (f : T1 -> T2) (trace : t E T1) : t E T2 :=
+    match trace with
+    | Ret x => Ret (f x)
+    | Call c k => Call c (fun a => map f (k a))
+    end.
 End Trace.
 
 Module Model.
@@ -203,12 +209,12 @@ Module Choose.
     Qed.
   End Equiv.
 
-  Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
+  (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
     (x : t E A) : bool.
     destruct x as [v | c h | x1 x2].
     - exact true.
     - 
-  Defined.
+  Defined.*)
 End Choose.
 
 Module LastStep.
@@ -270,6 +276,13 @@ Module LastSteps.
     t x (Trace.Call c trace).
 End LastSteps.
 
+Module DeadLockFree.
+  Definition t {E S} (m : Model.t E S) (s : S) {A} (x : C.t E A) : Prop :=
+    forall trace s' x', Steps.t x trace -> NotStuck.t m s trace s' x' ->
+    exists trace', exists s'', exists v,
+      LastSteps.t x' trace' /\ NotStuck.t m s' trace s'' v.
+End DeadLockFree.
+
 Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   match x with
   | C.Ret _ v => Choose.Ret v
@@ -318,6 +331,16 @@ Module Equiv.
       now apply step.
   Qed.
 
+  Fixpoint traces {E A} (x : C.t E A) trace (H : Steps.t x trace)
+    : Choose.Steps.t (compile x) (Trace.map compile trace).
+    destruct H.
+    - apply Choose.Steps.Nil.
+    - apply (Choose.Steps.Cons _ _ (fun a => compile (k a))).
+      + now apply step.
+      + intro.
+        now apply traces.
+  Qed.
+
   Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : LastSteps.t x trace) : Choose.LastSteps.t (compile x) trace.
     destruct H.
@@ -327,5 +350,12 @@ Module Equiv.
       + now apply step.
       + intro.
         now apply last_traces.
+  Qed.
+
+  Lemma dead_lock {E S} (m : Model.t E S) (s : S) {A} (x : C.t E A)
+    (H : Choose.DeadLockFree.t m s (compile x)) : DeadLockFree.t m s x.
+    intros trace s' x' H_trace H_not_stuck.
+    Check H _ _ _ (traces _ _ H_trace).
+    exists
   Qed.
 End Equiv.
