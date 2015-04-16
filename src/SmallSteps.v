@@ -3,6 +3,14 @@ Require Import Io.All.
 
 Import ListNotations.
 
+Module Trace.
+  Inductive t (E : Effect.t) (T : Type) : Type :=
+  | Ret : T -> t E T
+  | Call : forall c, (Effect.answer E c -> t E T) -> t E T.
+  Arguments Ret {E T} _.
+  Arguments Call {E T} _ _.
+End Trace.
+
 Module Model.
   Record t (E : Effect.t) (S : Type) := New {
     pre : Effect.command E -> S -> Prop;
@@ -14,13 +22,13 @@ Module Model.
   Arguments state {E S} _ _ _ _.
 End Model.
 
-Module Trace.
-  Inductive t (E : Effect.t) (T : Type) : Type :=
-  | Ret : T -> t E T
-  | Call : forall c, (Effect.answer E c -> t E T) -> t E T.
-  Arguments Ret {E T} _.
-  Arguments Call {E T} _ _.
-End Trace.
+Module DeadLockFree.
+  Inductive t {E S T} (m : Model.t E S) : S -> Trace.t E T -> Prop :=
+  | Ret : forall s x, t m s (Trace.Ret x)
+  | Call : forall s c k (H : Model.pre m c s),
+    t m (Model.state m c s H) (k (Model.answer m c s H)) ->
+    t m s (Trace.Call c k).
+End DeadLockFree.
 
 Module Choose.
   Inductive t (E : Effect.t) (A : Type) : Type :=
@@ -72,28 +80,6 @@ Module Choose.
       Step.t c x k -> (forall a, t (k a) (trace a)) ->
       t x (Trace.Call c trace).
   End LastSteps.
-
-  Module ValidSteps.
-    Inductive t {E : Effect.t} {S : Type} (m : Model.t E S) (s : S) {A : Type}
-      : forall {x : Choose.t E A} {trace}, Steps.t x trace -> Prop :=
-    | Nil : forall x, t m s (Steps.Nil x)
-    | Cons : forall x c k trace,
-      forall (H : Model.pre m c s) (step : Step.t c x k)
-        (steps : forall a, Steps.t (k a) (trace a)),
-      t m (Model.state m c s H) (steps (Model.answer m c s H)) ->
-      t m s (Steps.Cons x c k trace step steps).
-  End ValidSteps.
-
-  Module ValidLastSteps.
-    Inductive t {E : Effect.t} {S : Type} (m : Model.t E S) (s : S) {A : Type}
-      : forall {x : Choose.t E A} {trace}, LastSteps.t x trace -> Prop :=
-    | Nil : forall x v step, t m s (LastSteps.Nil x v step)
-    | Cons : forall x c k trace,
-      forall (H : Model.pre m c s) (step : Step.t c x k)
-        (steps : forall a, LastSteps.t (k a) (trace a)),
-      t m (Model.state m c s H) (steps (Model.answer m c s H)) ->
-      t m s (LastSteps.Cons x c k trace step steps).
-  End ValidLastSteps.
 
   Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
     match x with
