@@ -93,12 +93,18 @@ Module Choose.
       t x (Trace.Call c trace).
   End LastSteps.
 
-  (*Module ValidSteps.
+  Module ValidSteps.
     Inductive t {E : Effect.t} {S : Type} (m : Model.t E S) (s : S) {A : Type}
-      : Trace.t E (Choose.t E A) -> Type :=
+      : forall {x : Choose.t E A} {trace}, Steps.t x trace -> Prop :=
+    | Nil : forall x, t m s (Steps.Nil x)
+    | Cons : forall x c k trace,
+      forall (step : Step.t c x k) (steps : forall a, Steps.t (k a) (trace a)),
+      forall (H : Model.pre m c s),
+      t m (Model.state m c s H) (steps (Model.answer m c s H)) ->
+      t m s (Steps.Cons x c k trace step steps).
   End ValidSteps.
 
-  Module ModelSteps.
+  (*Module ModelSteps.
     Inductive t {E : Effect.t} {S : Type} (m : Model.t E S) (s : S) {A : Type}
       (x : Choose.t E A) : Trace.t E (Choose.t E A) -> Type :=
     | Nil : t m s x (Trace.Ret x)
