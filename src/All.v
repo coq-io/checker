@@ -1,4 +1,4 @@
-Require Import Coq.Lists.List.
+(*Require Import Coq.Lists.List.
 Require Import Io.All.
 
 Import ListNotations.
@@ -217,4 +217,4 @@ Module Lock.
 
   Compute ex1 2.
   Compute Choose.compile (ex1 2) Choose.Ret.
-End Lock.
+End Lock.*)
