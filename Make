@@ -1,4 +1,3 @@
 -R src Io.Checker
 
-src/All.v
 src/SmallSteps.v
