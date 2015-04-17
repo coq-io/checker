@@ -197,7 +197,7 @@ Module Choose.
         now apply join_left.
     Qed.
 
-    Fixpoint join_left_last {E} {A B} (x : t E A) (v_x : A) (y : t E B) (v_y : B)
+    Fixpoint join_left_last {E A B} (x : t E A) (v_x : A) (y : t E B) (v_y : B)
       (H_x : LastStep.t x v_x) (H_y : LastStep.t y v_y)
       : LastStep.t (Choose.join_left x y) (v_x, v_y).
       destruct H_x.
@@ -208,6 +208,85 @@ Module Choose.
         now apply join_left_last.
     Qed.
   End Equiv.
+
+  Module Reverse.
+    Fixpoint choose_last {E A} {x1 x2 : t E A} {v : A}
+      (H : LastStep.t (Choose x1 x2) v) : LastStep.t x1 v \/ LastStep.t x2 v.
+      inversion H.
+      - now left.
+      - now right.
+    Qed.
+
+    Fixpoint map_last {E A B} {x : t E A} {f : A -> B} {v : B}
+      (H : LastStep.t (Choose.map x f) v)
+      : exists v_x, LastStep.t x v_x /\ f v_x = v.
+      destruct x as [v_x | c h | x1 x2].
+      - exists v_x.
+        split.
+        + apply LastStep.Ret.
+        + now inversion H.
+      - inversion H.
+      - destruct (choose_last H) as [H1 | H2].
+        + destruct (map_last _ _ _ _ _ _ H1) as [v_x1 H_x1].
+          exists v_x1.
+          split.
+          * now apply LastStep.ChooseLeft.
+          * now destruct H_x1.
+        + destruct (map_last _ _ _ _ _ _ H2) as [v_x2 H_x2].
+          exists v_x2.
+          split.
+          * now apply LastStep.ChooseRight.
+          * now destruct H_x2.
+    Qed.
+
+    Fixpoint bind_last {E A B} (x : t E A) (f : A -> t E B) (v : B)
+      (H : LastStep.t (Choose.bind x f) v)
+      : exists v_x, LastStep.t x v_x /\ LastStep.t (f v_x) v.
+      destruct x as [v_x | c h | x1 x2].
+      - exists v_x.
+        split.
+        + apply LastStep.Ret.
+        + apply H.
+      - inversion H.
+      - destruct (choose_last H) as [H1 | H2].
+        + destruct (bind_last _ _ _ _ _ _ H1) as [v_x1 H_x1].
+          exists v_x1.
+          split.
+          * now apply LastStep.ChooseLeft.
+          * now destruct H_x1.
+        + destruct (bind_last _ _ _ _ _ _ H2) as [v_x2 H_x2].
+          exists v_x2.
+          split.
+          * now apply LastStep.ChooseRight.
+          * now destruct H_x2.
+    Qed.
+
+    Fixpoint join_right_last {E A B} (x : t E A) (y : t E B) v_x v_y
+      (H : LastStep.t (Choose.join_right x y) (v_x, v_y))
+      : LastStep.t x v_x /\ LastStep.t y v_y.
+      destruct y as [v'_y | c h | y1 y2].
+      - simpl in H.
+        destruct (map_last H) as [v'_x H_x].
+        destruct H_x.
+        assert (H_eq_x : v_x = v'_x) by congruence.
+        assert (H_eq_y : v_y = v'_y) by congruence.
+        split.
+        + now rewrite H_eq_x.
+        + rewrite H_eq_y.
+          apply LastStep.Ret.
+      - inversion H.
+      - simpl in H.
+        destruct (choose_last H) as [H1 | H2].
+        + destruct (join_right_last _ _ _ _ _ _ _ H1).
+          split.
+          * trivial.
+          * now apply LastStep.ChooseLeft.
+        + destruct (join_right_last _ _ _ _ _ _ _ H2).
+          split.
+          * trivial.
+          * now apply LastStep.ChooseRight.
+    Qed.
+  End Reverse.
 
   (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
     (x : t E A) : bool.
@@ -351,11 +430,43 @@ Module Equiv.
       + intro.
         now apply last_traces.
   Qed.
-
-  Lemma dead_lock {E S} (m : Model.t E S) (s : S) {A} (x : C.t E A)
-    (H : Choose.DeadLockFree.t m s (compile x)) : DeadLockFree.t m s x.
-    intros trace s' x' H_trace H_not_stuck.
-    Check H _ _ _ (traces _ _ H_trace).
-    exists
-  Qed.
 End Equiv.
+
+Module Reverse.
+  Fixpoint last_step {E A} (x : C.t E A) (v : A)
+    (H : Choose.LastStep.t (compile x) v) : LastStep.t x v.
+    destruct x.
+    - inversion_clear H.
+      apply LastStep.Ret.
+    - inversion_clear H.
+    - simpl in H.
+      destruct (Choose.Reverse.bind_last _ _ _ H) as [v_x H_x].
+      apply (LastStep.Let _ _ _ _ v_x).
+      + now apply last_step.
+      + now apply last_step.
+    - destruct (Choose.Reverse.choose_last _ _ _ H).
+      + apply LastStep.ChooseLeft.
+        now apply last_step.
+      + apply LastStep.ChooseRight.
+        now apply last_step.
+    - 
+  Qed.
+
+  Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
+    (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
+    destruct H.
+    - apply Choose.LastSteps.Nil.
+      now apply last_step.
+    - apply (Choose.LastSteps.Cons _ _ (fun a => compile (k a))).
+      + now apply step.
+      + intro.
+        now apply last_traces.
+  Qed.
+End Reverse.
+
+Lemma dead_lock {E S} (m : Model.t E S) (s : S) {A} (x : C.t E A)
+  (H : Choose.DeadLockFree.t m s (compile x)) : DeadLockFree.t m s x.
+  intros trace s' x' H_trace H_not_stuck.
+  Check H _ _ _ (traces _ _ H_trace).
+  exists
+Qed.
