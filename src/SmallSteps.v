@@ -23,52 +23,46 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} (c : Effect.command E)
-    : forall {A}, C.t E A -> (Effect.answer E c -> C.t E A) -> Prop :=
-  | Call : t c (C.Call c) (fun a => C.Ret _ a)
-  | Let : forall A B (x : C.t E A) (f : A -> C.t E B) k,
-    t c x k ->
-    t c (C.Let _ _ x f) (fun a => C.Let _ _ (k a) f)
-  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) k,
-    LastStep.t x v -> t c (f v) k ->
-    t c (C.Let _ _ x f) k
-  | ChooseLeft : forall A (x1 x2 : C.t E A) k,
-    t c x1 k ->
-    t c (C.Choose _ x1 x2) k
-  | ChooseRight : forall A (x1 x2 : C.t E A) k,
-    t c x2 k ->
-    t c (C.Choose _ x1 x2) k
-  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B) k,
-    t c x k ->
-    t c (C.Join _ _ x y) (fun a => C.Join _ _ (k a) y)
-  | JoinRight : forall A B (x : C.t E A) (y : C.t E B) k,
-    t c y k ->
-    t c (C.Join _ _ x y) (fun a => C.Join _ _ x (k a)).
+  Inductive t {E : Effect.t} (e : Event.t E)
+    : forall {A}, C.t E A -> C.t E A -> Prop :=
+  | Call : t e (C.Call (Event.c e)) (C.Ret _ (Event.a e))
+  | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
+    t e x x' ->
+    t e (C.Let _ _ x f) (C.Let _ _ x' f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
+    LastStep.t x v -> t e (f v) y ->
+    t e (C.Let _ _ x f) y
+  | ChooseLeft : forall A (x1 x2 x1' : C.t E A),
+    t e x1 x1' ->
+    t e (C.Choose _ x1 x2) x1'
+  | ChooseRight : forall A (x1 x2 x2' : C.t E A),
+    t e x2 x2' ->
+    t e (C.Choose _ x1 x2) x2'
+  | JoinLeft : forall A B (x x' : C.t E A) (y : C.t E B),
+    t e x x' ->
+    t e (C.Join _ _ x y) (C.Join _ _ x' y)
+  | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
+    t e y y' ->
+    t e (C.Join _ _ x y) (C.Join _ _ x y').
 End Step.
 
-Module Steps.
-  Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
-    : Trace.t E (C.t E A) -> Prop :=
-  | Nil : t x (Trace.Ret x)
-  | Cons : forall c k trace,
-    Step.t c x k -> (forall a, t (k a) (trace a)) ->
-    t x (Trace.Call c trace).
-End Steps.
-
 Module LastSteps.
-  Inductive t {E : Effect.t} {A : Type} (x : C.t E A) : Trace.t E A -> Prop :=
-  | Nil : forall v, LastStep.t x v -> t x (Trace.Ret v)
-  | Cons : forall c k trace,
-    Step.t c x k -> (forall a, t (k a) (trace a)) ->
-    t x (Trace.Call c trace).
+  Inductive t {E : Effect.t} {A : Type}
+    : list (Event.t E) -> C.t E A -> A -> Prop :=
+  | Nil : forall x v, LastStep.t x v -> t [] x v
+  | Cons : forall e x x' es v,
+    Step.t e x x' -> t es x' v ->
+    t (e :: es) x v.
 End LastSteps.
 
-Module DeadLockFree.
-  Definition t {E S} (m : Model.t E S) (s : S) {A} (x : C.t E A) : Prop :=
-    forall trace s' x', Steps.t x trace -> NotStuck.t m s trace s' x' ->
-    exists trace', exists s'', exists v,
-      LastSteps.t x' trace' /\ NotStuck.t m s' trace s'' v.
-End DeadLockFree.
+Module Steps.
+  Inductive t {E : Effect.t} {A : Type}
+    : list (Event.t E) -> C.t E A -> C.t E A -> Prop :=
+  | Nil : forall x, t [] x x
+  | Cons : forall e x x' es x'',
+    Step.t e x x' -> t es x' x'' ->
+    t (e :: es) x x''.
+End Steps.
 
 Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   match x with
@@ -79,46 +73,48 @@ Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   | C.Join _ _ x y => Choose.join (compile x) (compile y)
   end.
 
-Module Equiv.
-  Fixpoint last_step {E A} (x : C.t E A) (v : A) (H : LastStep.t x v)
-    : Choose.LastStep.t (compile x) v.
-    destruct H.
-    - apply Choose.LastStep.Ret.
-    - apply (Choose.Equiv.bind_last_last _ v_x).
-      + now apply last_step.
-      + now apply last_step.
-    - apply Choose.LastStep.ChooseLeft.
-      now apply last_step.
-    - apply Choose.LastStep.ChooseRight.
-      now apply last_step.
-    - apply Choose.LastStep.ChooseLeft.
-      apply Choose.Equiv.join_left_last.
-      + now apply last_step.
-      + now apply last_step.
-  Qed.
+Module Complete.
+  Module Last.
+    Fixpoint step {E A} (x : C.t E A) (v : A) (H : LastStep.t x v)
+      : Choose.LastStep.t (compile x) v.
+      destruct H.
+      - apply Choose.LastStep.Ret.
+      - apply (Choose.Complete.Last.bind_both _ v_x).
+        + now apply step.
+        + now apply step.
+      - apply Choose.LastStep.ChooseLeft.
+        now apply step.
+      - apply Choose.LastStep.ChooseRight.
+        now apply step.
+      - apply Choose.LastStep.ChooseLeft.
+        apply Choose.Complete.Last.join_left.
+        + now apply step.
+        + now apply step.
+    Qed.
+  End Last.
 
-  Fixpoint step {E} c {A} (x : C.t E A) k (H : Step.t c x k)
-    : Choose.Step.t c (compile x) (fun a => compile (k a)).
+  Fixpoint step {E} e {A} (x x' : C.t E A) (H : Step.t e x x')
+    : Choose.Step.t e (compile x) (compile x').
     destruct H.
     - apply Choose.Step.Call.
-    - apply Choose.Equiv.bind.
+    - apply Choose.Complete.bind.
       now apply step.
-    - apply (Choose.Equiv.bind_last c _ v).
-      + now apply Equiv.last_step.
+    - apply (Choose.Complete.Last.bind_left _ _ v).
+      + now apply Last.step.
       + now apply step.
     - apply Choose.Step.ChooseLeft.
       now apply step.
     - apply Choose.Step.ChooseRight.
       now apply step.
     - apply Choose.Step.ChooseLeft.
-      apply Choose.Equiv.join_left.
+      apply Choose.Complete.join_left.
       now apply step.
     - apply Choose.Step.ChooseRight.
-      apply Choose.Equiv.join_right.
+      apply Choose.Complete.join_right.
       now apply step.
   Qed.
 
-  Fixpoint traces {E A} (x : C.t E A) trace (H : Steps.t x trace)
+  (*Fixpoint traces {E A} (x : C.t E A) trace (H : Steps.t x trace)
     : Choose.Steps.t (compile x) (Trace.map compile trace).
     destruct H.
     - apply Choose.Steps.Nil.
@@ -137,42 +133,44 @@ Module Equiv.
       + now apply step.
       + intro.
         now apply last_traces.
-  Qed.
-End Equiv.
+  Qed.*)
+End Complete.
 
-Module Reverse.
-  Fixpoint last_step {E A} (x : C.t E A) (v : A)
-    (H : Choose.LastStep.t (compile x) v) : LastStep.t x v.
-    destruct x; simpl in H.
-    - inversion_clear H.
-      apply LastStep.Ret.
-    - inversion_clear H.
-    - destruct (Choose.Reverse.bind_last _ _ _ H) as [v_x H_x].
-      apply (LastStep.Let _ _ _ _ v_x).
-      + now apply last_step.
-      + now apply last_step.
-    - destruct (Choose.Reverse.choose_last H).
-      + apply LastStep.ChooseLeft.
-        now apply last_step.
-      + apply LastStep.ChooseRight.
-        now apply last_step.
-    - destruct v as [v_x v_y].
-      destruct (Choose.Reverse.join_last H).
-      apply LastStep.Join.
-      + now apply last_step.
-      + now apply last_step.
-  Qed.
+Module Sound.
+  Module Last.
+    Fixpoint step {E A} (x : C.t E A) (v : A)
+      (H : Choose.LastStep.t (compile x) v) : LastStep.t x v.
+      destruct x; simpl in H.
+      - inversion_clear H.
+        apply LastStep.Ret.
+      - inversion_clear H.
+      - destruct (Choose.Sound.Last.bind _ _ _ H) as [v_x H_x].
+        apply (LastStep.Let _ _ _ _ v_x).
+        + now apply step.
+        + now apply step.
+      - destruct (Choose.Sound.Last.choose H).
+        + apply LastStep.ChooseLeft.
+          now apply step.
+        + apply LastStep.ChooseRight.
+          now apply step.
+      - destruct v as [v_x v_y].
+        destruct (Choose.Sound.Last.join H).
+        apply LastStep.Join.
+        + now apply step.
+        + now apply step.
+    Qed.
+  End Last.
 
-  Fixpoint step {E} c {A} (x : C.t E A) k
+  (*Fixpoint step {E} c {A} (x : C.t E A) k
     (H : Choose.Step.t c (compile x) (fun a => compile (k a))) : Step.t c x k.
     (*inversion H.*)
     destruct x as [v | c' h | x f | x1 x2 | x y]; simpl in H.
     - inversion H.
     - inversion_clear H.
       apply Step.Call.
-  Qed.
+  Qed.*)
 
-  Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
+  (*Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
     destruct H.
     - apply Choose.LastSteps.Nil.
@@ -181,12 +179,5 @@ Module Reverse.
       + now apply step.
       + intro.
         now apply last_traces.
-  Qed.
-End Reverse.
-
-Lemma dead_lock {E S} (m : Model.t E S) (s : S) {A} (x : C.t E A)
-  (H : Choose.DeadLockFree.t m s (compile x)) : DeadLockFree.t m s x.
-  intros trace s' x' H_trace H_not_stuck.
-  Check H _ _ _ (traces _ _ H_trace).
-  exists
-Qed.
+  Qed.*)
+End Sound.

@@ -36,15 +36,6 @@ Module Step.
     t e (Choose.Choose x1 x2) k.
 End Step.
 
-Module Steps.
-  Inductive t {E : Effect.t} {A : Type}
-    : list (Event.t E) -> Choose.t E A -> Choose.t E A -> Prop :=
-  | Nil : forall x, t [] x x
-  | Cons : forall e x x' es x'',
-    Step.t e x x' -> t es x' x'' ->
-    t (e :: es) x x''.
-End Steps.
-
 Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
     : list (Event.t E) -> Choose.t E A -> A -> Prop :=
@@ -53,6 +44,15 @@ Module LastSteps.
     Step.t e x x' -> t es x' v ->
     t (e :: es) x v.
 End LastSteps.
+
+Module Steps.
+  Inductive t {E : Effect.t} {A : Type}
+    : list (Event.t E) -> Choose.t E A -> Choose.t E A -> Prop :=
+  | Nil : forall x, t [] x x
+  | Cons : forall e x x' es x'',
+    Step.t e x x' -> t es x' x'' ->
+    t (e :: es) x x''.
+End Steps.
 
 Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   match x with
