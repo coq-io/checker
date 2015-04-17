@@ -279,6 +279,17 @@ Module Sound.
       - now apply join_right.
     Qed.
   End Last.
+
+  Definition call {E} (e : Event.t E) (c : Effect.command E) x
+    (H : Step.t e (Choose.Call c Choose.Ret) x)
+    : exists a : Effect.answer E c, e = Event.New c a /\ x = Choose.Ret a.
+    Show.
+    refine (let a := Event.a e in _).
+    Show.
+    inversion H.
+    Show.
+    rewrite <- H1.
+  Qed.
 End Sound.
 
 (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}

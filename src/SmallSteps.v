@@ -23,25 +23,25 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} (e : Event.t E)
-    : forall {A}, C.t E A -> C.t E A -> Prop :=
-  | Call : t e (C.Call (Event.c e)) (C.Ret _ (Event.a e))
-  | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
+  Inductive t {E : Effect.t}
+    : forall {A}, Event.t E -> C.t E A -> C.t E A -> Prop :=
+  | Call : forall c a, t (Event.New c a) (C.Call c) (C.Ret _ a)
+  | Let : forall e A B (x x' : C.t E A) (f : A -> C.t E B),
     t e x x' ->
     t e (C.Let _ _ x f) (C.Let _ _ x' f)
-  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
+  | LetDone : forall e A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
     LastStep.t x v -> t e (f v) y ->
     t e (C.Let _ _ x f) y
-  | ChooseLeft : forall A (x1 x2 x1' : C.t E A),
+  | ChooseLeft : forall e A (x1 x2 x1' : C.t E A),
     t e x1 x1' ->
     t e (C.Choose _ x1 x2) x1'
-  | ChooseRight : forall A (x1 x2 x2' : C.t E A),
+  | ChooseRight : forall e A (x1 x2 x2' : C.t E A),
     t e x2 x2' ->
     t e (C.Choose _ x1 x2) x2'
-  | JoinLeft : forall A B (x x' : C.t E A) (y : C.t E B),
+  | JoinLeft : forall e A B (x x' : C.t E A) (y : C.t E B),
     t e x x' ->
     t e (C.Join _ _ x y) (C.Join _ _ x' y)
-  | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
+  | JoinRight : forall e A B (x : C.t E A) (y y' : C.t E B),
     t e y y' ->
     t e (C.Join _ _ x y) (C.Join _ _ x y').
 End Step.
@@ -161,14 +161,23 @@ Module Sound.
     Qed.
   End Last.
 
-  (*Fixpoint step {E} c {A} (x : C.t E A) k
-    (H : Choose.Step.t c (compile x) (fun a => compile (k a))) : Step.t c x k.
-    (*inversion H.*)
-    destruct x as [v | c' h | x f | x1 x2 | x y]; simpl in H.
+  Fixpoint step {E A} (x x' : C.t E A) e
+    (H : Choose.Step.t e (compile x) (compile x')) : Step.t e x x'.
+    (*case_eq x.*)
+    (* destruct e. *)
+    destruct x as [v | c | x f | x1 x2 | x y]; simpl in H.
     - inversion H.
-    - inversion_clear H.
+    - inversion H.
+      assert (e' : Event.t E) by admit.
+      assert (e = e') by admit.
+      rewrite H0.
+      rewrite <- H1.
+ assert (exists a, x' = C.Ret _ a).
+      admit.
+      destruct H0.
+      rewrite H0.
       apply Step.Call.
-  Qed.*)
+  Qed.
 
   (*Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
