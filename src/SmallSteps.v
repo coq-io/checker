@@ -286,6 +286,40 @@ Module Choose.
           * trivial.
           * now apply LastStep.ChooseRight.
     Qed.
+
+    Fixpoint join_left_last {E A B} (x : t E A) (y : t E B) v_x v_y
+      (H : LastStep.t (Choose.join_left x y) (v_x, v_y))
+      : LastStep.t x v_x /\ LastStep.t y v_y.
+      destruct x as [v'_x | c h | x1 x2].
+      - simpl in H.
+        destruct (map_last H) as [v'_y H_y].
+        destruct H_y.
+        assert (H_eq_x : v_x = v'_x) by congruence.
+        assert (H_eq_y : v_y = v'_y) by congruence.
+        split.
+        + rewrite H_eq_x.
+          apply LastStep.Ret.
+        + now rewrite H_eq_y.
+      - inversion H.
+      - simpl in H.
+        destruct (choose_last H) as [H1 | H2].
+        + destruct (join_left_last _ _ _ _ _ _ _ H1).
+          split.
+          * now apply LastStep.ChooseLeft.
+          * trivial.
+        + destruct (join_left_last _ _ _ _ _ _ _ H2).
+          split.
+          * now apply LastStep.ChooseRight.
+          * trivial.
+    Qed.
+
+    Definition join_last {E A B} {x : t E A} {y : t E B} {v_x v_y}
+      (H : LastStep.t (Choose.join x y) (v_x, v_y))
+      : LastStep.t x v_x /\ LastStep.t y v_y.
+      destruct (choose_last H).
+      - now apply join_left_last.
+      - now apply join_right_last.
+    Qed.
   End Reverse.
 
   (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
@@ -444,12 +478,17 @@ Module Reverse.
       apply (LastStep.Let _ _ _ _ v_x).
       + now apply last_step.
       + now apply last_step.
-    - destruct (Choose.Reverse.choose_last _ _ _ H).
+    - destruct (Choose.Reverse.choose_last H).
       + apply LastStep.ChooseLeft.
         now apply last_step.
       + apply LastStep.ChooseRight.
         now apply last_step.
-    - 
+    - simpl in H.
+      destruct v as [v_x v_y].
+      destruct (Choose.Reverse.join_last H).
+      apply LastStep.Join.
+      + now apply last_step.
+      + now apply last_step.
   Qed.
 
   Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
