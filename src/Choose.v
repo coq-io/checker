@@ -1,8 +1,8 @@
 Require Import Coq.Lists.List.
 Require Import Io.All.
-Require Event.
 
 Import ListNotations.
+Local Open Scope type.
 
 Inductive t (E : Effect.t) (A : Type) : Type :=
 | Ret : A -> t E A
@@ -13,7 +13,7 @@ Arguments Call {E A} _ _.
 Arguments Choose {E A} _ _.
 
 Module LastStep.
-  Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Prop :=
+  Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Type :=
   | Ret : forall v,
     t (Choose.Ret v) v
   | ChooseLeft : forall (x1 x2 : Choose.t E A) (v : A),
@@ -25,18 +25,18 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} (e : Event.t E) {A : Type}
-    : Choose.t E A -> Choose.t E A -> Prop :=
-  | Call : forall h, t e (Choose.Call (Event.c e) h) (h (Event.a e))
-  | ChooseLeft : forall (x1 x2 : Choose.t E A) k,
-    t e x1 k ->
-    t e (Choose.Choose x1 x2) k
-  | ChooseRight : forall (x1 x2 : Choose.t E A) k,
-    t e x2 k ->
-    t e (Choose.Choose x1 x2) k.
+  Inductive t {E : Effect.t} {A : Type}
+    : Choose.t E A -> Choose.t E A -> Type :=
+  | Call : forall c h a, t (Choose.Call c h) (h a)
+  | ChooseLeft : forall (x1 x2 x1' : Choose.t E A),
+    t x1 x1' ->
+    t (Choose.Choose x1 x2) x1'
+  | ChooseRight : forall (x1 x2 x2' : Choose.t E A),
+    t x2 x2' ->
+    t (Choose.Choose x1 x2) x2'.
 End Step.
 
-Module LastSteps.
+(*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
     : list (Event.t E) -> Choose.t E A -> A -> Prop :=
   | Nil : forall x v, LastStep.t x v -> t [] x v
@@ -52,7 +52,7 @@ Module Steps.
   | Cons : forall e x x' es x'',
     Step.t e x x' -> t es x' x'' ->
     t (e :: es) x x''.
-End Steps.
+End Steps.*)
 
 Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   match x with
@@ -61,7 +61,7 @@ Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   | Choose x1 x2 => Choose (map x1 f) (map x2 f)
   end.
 
-Fixpoint bind {E} {A B} (x : t E A) (f : A -> t E B) : t E B :=
+Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
   match x with
   | Ret v => f v
   | Call c h => Call c (fun a => bind (h a) f)
@@ -91,7 +91,7 @@ Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
 
 Module Complete.
   Module Last.
-    Fixpoint map {E} {A B} (x : t E A) (v : A) (f : A -> B)
+    Fixpoint map {E A B} (x : t E A) (v : A) (f : A -> B)
       (H : LastStep.t x v) : LastStep.t (Choose.map x f) (f v).
       destruct H.
       - apply LastStep.Ret.
@@ -99,29 +99,18 @@ Module Complete.
         now apply map.
       - apply LastStep.ChooseRight.
         now apply map.
-    Qed.
+    Defined.
 
-    Fixpoint bind_left {E} e {A B} (x : t E A) (v : A) (f : A -> t E B)
-      (y : t E B) (H_x : LastStep.t x v) (H_f : Step.t e (f v) y)
-      : Step.t e (Choose.bind x f) y.
-      destruct H_x.
-      - exact H_f.
-      - apply Step.ChooseLeft.
-        now apply bind_left with (v := v).
-      - apply Step.ChooseRight.
-        now apply bind_left with (v := v).
-    Qed.
-
-    Fixpoint bind_both {E} {A B} (x : t E A) (v_x : A) (f : A -> t E B)
+    Fixpoint bind {E A B} (x : t E A) (v_x : A) (f : A -> t E B)
       (v_y : B) (H_x : LastStep.t x v_x) (H_f : LastStep.t (f v_x) v_y)
       : LastStep.t (Choose.bind x f) v_y.
       destruct H_x.
       - exact H_f.
       - apply LastStep.ChooseLeft.
-        now apply bind_both with (v_x := v).
+        now apply bind with (v_x := v).
       - apply LastStep.ChooseRight.
-        now apply bind_both with (v_x := v).
-    Qed.
+        now apply bind with (v_x := v).
+    Defined.
 
     Fixpoint join_left {E A B} (x : t E A) (v_x : A) (y : t E B) (v_y : B)
       (H_x : LastStep.t x v_x) (H_y : LastStep.t y v_y)
@@ -132,52 +121,63 @@ Module Complete.
         now apply join_left.
       - apply LastStep.ChooseRight.
         now apply join_left.
-    Qed.
+    Defined.
   End Last.
 
-  Fixpoint bind {E} e {A B} (x x' : t E A) (f : A -> t E B) (H : Step.t e x x')
-    : Step.t e (Choose.bind x f) (Choose.bind x' f).
-    destruct H.
-    - apply (Step.Call e).
+  Fixpoint bind_left {E A B} (x : t E A) (v : A) (f : A -> t E B)
+    (y : t E B) (H_x : LastStep.t x v) (H_f : Step.t (f v) y)
+    : Step.t (Choose.bind x f) y.
+    destruct H_x.
+    - exact H_f.
     - apply Step.ChooseLeft.
-      now apply bind.
+      now apply bind_left with (v := v).
     - apply Step.ChooseRight.
-      now apply bind.
-  Qed.
+      now apply bind_left with (v := v).
+  Defined.
 
-  Fixpoint join_right {E} e {A B} (x : t E A) (y y' : t E B) (H : Step.t e y y')
-    : Step.t e (Choose.join_right x y) (Choose.join x y').
+  Fixpoint bind_right {E A B} (x x' : t E A) (f : A -> t E B) (H : Step.t x x')
+    : Step.t (Choose.bind x f) (Choose.bind x' f).
     destruct H.
-    - apply (Step.Call e).
+    - exact (Step.Call _ _ _).
+    - apply Step.ChooseLeft.
+      now apply bind_right.
+    - apply Step.ChooseRight.
+      now apply bind_right.
+  Defined.
+
+  Fixpoint join_right {E A B} (x : t E A) (y y' : t E B) (H : Step.t y y')
+    : Step.t (Choose.join_right x y) (Choose.join x y').
+    destruct H.
+    - exact (Step.Call _ _ _).
     - apply Step.ChooseLeft.
       now apply join_right.
     - apply Step.ChooseRight.
       now apply join_right.
-  Qed.
+  Defined.
 
-  Fixpoint join_left {E} e {A B} (x x' : t E A) (y : t E B) (H : Step.t e x x')
-    : Step.t e (Choose.join_left x y) (Choose.join x' y).
+  Fixpoint join_left {E A B} (x x' : t E A) (y : t E B) (H : Step.t x x')
+    : Step.t (Choose.join_left x y) (Choose.join x' y).
     destruct H.
-    - apply (Step.Call e).
+    - exact (Step.Call _ _ _).
     - apply Step.ChooseLeft.
       now apply join_left.
     - apply Step.ChooseRight.
       now apply join_left.
-  Qed.
+  Defined.
 End Complete.
 
 Module Sound.
   Module Last.
     Fixpoint choose {E A} {x1 x2 : t E A} {v : A}
-      (H : LastStep.t (Choose x1 x2) v) : LastStep.t x1 v \/ LastStep.t x2 v.
+      (H : LastStep.t (Choose x1 x2) v) : LastStep.t x1 v + LastStep.t x2 v.
       inversion H.
       - now left.
       - now right.
-    Qed.
+    Defined.
 
     Fixpoint map {E A B} {x : t E A} {f : A -> B} {v : B}
       (H : LastStep.t (Choose.map x f) v)
-      : exists v_x, LastStep.t x v_x /\ f v_x = v.
+      : {v_x : A & LastStep.t x v_x * (f v_x = v)}.
       destruct x as [v_x | c h | x1 x2].
       - exists v_x.
         split.
@@ -188,18 +188,20 @@ Module Sound.
         + destruct (map _ _ _ _ _ _ H1) as [v_x1 H_x1].
           exists v_x1.
           split.
-          * now apply LastStep.ChooseLeft.
+          * apply LastStep.ChooseLeft.
+            now destruct H_x1.
           * now destruct H_x1.
         + destruct (map _ _ _ _ _ _ H2) as [v_x2 H_x2].
           exists v_x2.
           split.
-          * now apply LastStep.ChooseRight.
+          * apply LastStep.ChooseRight.
+            now destruct H_x2.
           * now destruct H_x2.
-    Qed.
+    Defined.
 
     Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) (v : B)
       (H : LastStep.t (Choose.bind x f) v)
-      : exists v_x, LastStep.t x v_x /\ LastStep.t (f v_x) v.
+      : {v_x : A & LastStep.t x v_x * LastStep.t (f v_x) v}.
       destruct x as [v_x | c h | x1 x2].
       - exists v_x.
         split.
@@ -210,18 +212,20 @@ Module Sound.
         + destruct (bind _ _ _ _ _ _ H1) as [v_x1 H_x1].
           exists v_x1.
           split.
-          * now apply LastStep.ChooseLeft.
+          * apply LastStep.ChooseLeft.
+            now destruct H_x1.
           * now destruct H_x1.
         + destruct (bind _ _ _ _ _ _ H2) as [v_x2 H_x2].
           exists v_x2.
           split.
-          * now apply LastStep.ChooseRight.
+          * apply LastStep.ChooseRight.
+            now destruct H_x2.
           * now destruct H_x2.
-    Qed.
+    Defined.
 
     Fixpoint join_right {E A B} (x : t E A) (y : t E B) v_x v_y
       (H : LastStep.t (Choose.join_right x y) (v_x, v_y))
-      : LastStep.t x v_x /\ LastStep.t y v_y.
+      : LastStep.t x v_x * LastStep.t y v_y.
       destruct y as [v'_y | c h | y1 y2].
       - simpl in H.
         destruct (map H) as [v'_x H_x].
@@ -243,11 +247,11 @@ Module Sound.
           split.
           * trivial.
           * now apply LastStep.ChooseRight.
-    Qed.
+    Defined.
 
     Fixpoint join_left {E A B} (x : t E A) (y : t E B) v_x v_y
       (H : LastStep.t (Choose.join_left x y) (v_x, v_y))
-      : LastStep.t x v_x /\ LastStep.t y v_y.
+      : LastStep.t x v_x * LastStep.t y v_y.
       destruct x as [v'_x | c h | x1 x2].
       - simpl in H.
         destruct (map H) as [v'_y H_y].
@@ -269,18 +273,18 @@ Module Sound.
           split.
           * now apply LastStep.ChooseRight.
           * trivial.
-    Qed.
+    Defined.
 
     Definition join {E A B} {x : t E A} {y : t E B} {v_x v_y}
       (H : LastStep.t (Choose.join x y) (v_x, v_y))
-      : LastStep.t x v_x /\ LastStep.t y v_y.
+      : LastStep.t x v_x * LastStep.t y v_y.
       destruct (choose H).
       - now apply join_left.
       - now apply join_right.
-    Qed.
+    Defined.
   End Last.
 
-  Definition call {E} (e : Event.t E) (c : Effect.command E) x
+  (*Definition call {E} (e : Event.t E) (c : Effect.command E) x
     (H : Step.t e (Choose.Call c Choose.Ret) x)
     : exists a : Effect.answer E c, e = Event.New c a /\ x = Choose.Ret a.
     Show.
@@ -289,7 +293,7 @@ Module Sound.
     inversion H.
     Show.
     rewrite <- H1.
-  Qed.
+  Defined.*)
 End Sound.
 
 (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}

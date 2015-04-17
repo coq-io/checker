@@ -5,7 +5,7 @@ Require Choose.
 Import ListNotations.
 
 Module LastStep.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Type :=
   | Ret : forall A (v : A),
     t (C.Ret E v) v
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
@@ -24,29 +24,29 @@ End LastStep.
 
 Module Step.
   Inductive t {E : Effect.t}
-    : forall {A}, Event.t E -> C.t E A -> C.t E A -> Prop :=
-  | Call : forall c a, t (Event.New c a) (C.Call c) (C.Ret _ a)
-  | Let : forall e A B (x x' : C.t E A) (f : A -> C.t E B),
-    t e x x' ->
-    t e (C.Let _ _ x f) (C.Let _ _ x' f)
-  | LetDone : forall e A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
-    LastStep.t x v -> t e (f v) y ->
-    t e (C.Let _ _ x f) y
-  | ChooseLeft : forall e A (x1 x2 x1' : C.t E A),
-    t e x1 x1' ->
-    t e (C.Choose _ x1 x2) x1'
-  | ChooseRight : forall e A (x1 x2 x2' : C.t E A),
-    t e x2 x2' ->
-    t e (C.Choose _ x1 x2) x2'
-  | JoinLeft : forall e A B (x x' : C.t E A) (y : C.t E B),
-    t e x x' ->
-    t e (C.Join _ _ x y) (C.Join _ _ x' y)
-  | JoinRight : forall e A B (x : C.t E A) (y y' : C.t E B),
-    t e y y' ->
-    t e (C.Join _ _ x y) (C.Join _ _ x y').
+    : forall {A}, C.t E A -> C.t E A -> Type :=
+  | Call : forall c a, t (C.Call c) (C.Ret _ a)
+  | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
+    t x x' ->
+    t (C.Let _ _ x f) (C.Let _ _ x' f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
+    LastStep.t x v -> t (f v) y ->
+    t (C.Let _ _ x f) y
+  | ChooseLeft : forall A (x1 x2 x1' : C.t E A),
+    t x1 x1' ->
+    t (C.Choose _ x1 x2) x1'
+  | ChooseRight : forall A (x1 x2 x2' : C.t E A),
+    t x2 x2' ->
+    t (C.Choose _ x1 x2) x2'
+  | JoinLeft : forall A B (x x' : C.t E A) (y : C.t E B),
+    t x x' ->
+    t (C.Join _ _ x y) (C.Join _ _ x' y)
+  | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
+    t y y' ->
+    t (C.Join _ _ x y) (C.Join _ _ x y').
 End Step.
 
-Module LastSteps.
+(*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
     : list (Event.t E) -> C.t E A -> A -> Prop :=
   | Nil : forall x v, LastStep.t x v -> t [] x v
@@ -62,7 +62,7 @@ Module Steps.
   | Cons : forall e x x' es x'',
     Step.t e x x' -> t es x' x'' ->
     t (e :: es) x x''.
-End Steps.
+End Steps.*)
 
 Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   match x with
@@ -79,7 +79,7 @@ Module Complete.
       : Choose.LastStep.t (compile x) v.
       destruct H.
       - apply Choose.LastStep.Ret.
-      - apply (Choose.Complete.Last.bind_both _ v_x).
+      - apply (Choose.Complete.Last.bind _ v_x).
         + now apply step.
         + now apply step.
       - apply Choose.LastStep.ChooseLeft.
@@ -90,16 +90,16 @@ Module Complete.
         apply Choose.Complete.Last.join_left.
         + now apply step.
         + now apply step.
-    Qed.
+    Defined.
   End Last.
 
-  Fixpoint step {E} e {A} (x x' : C.t E A) (H : Step.t e x x')
-    : Choose.Step.t e (compile x) (compile x').
+  Fixpoint step {E A} (x x' : C.t E A) (H : Step.t x x')
+    : Choose.Step.t (compile x) (compile x').
     destruct H.
-    - apply Choose.Step.Call.
-    - apply Choose.Complete.bind.
+    - exact (Choose.Step.Call _ _ _).
+    - apply Choose.Complete.bind_right.
       now apply step.
-    - apply (Choose.Complete.Last.bind_left _ _ v).
+    - apply (Choose.Complete.bind_left _ v).
       + now apply Last.step.
       + now apply step.
     - apply Choose.Step.ChooseLeft.
@@ -112,7 +112,7 @@ Module Complete.
     - apply Choose.Step.ChooseRight.
       apply Choose.Complete.join_right.
       now apply step.
-  Qed.
+  Defined.
 
   (*Fixpoint traces {E A} (x : C.t E A) trace (H : Steps.t x trace)
     : Choose.Steps.t (compile x) (Trace.map compile trace).
@@ -145,6 +145,7 @@ Module Sound.
         apply LastStep.Ret.
       - inversion_clear H.
       - destruct (Choose.Sound.Last.bind _ _ _ H) as [v_x H_x].
+        destruct H_x.
         apply (LastStep.Let _ _ _ _ v_x).
         + now apply step.
         + now apply step.
@@ -158,16 +159,17 @@ Module Sound.
         apply LastStep.Join.
         + now apply step.
         + now apply step.
-    Qed.
+    Defined.
   End Last.
 
-  Fixpoint step {E A} (x x' : C.t E A) e
-    (H : Choose.Step.t e (compile x) (compile x')) : Step.t e x x'.
+  Fixpoint step {E A} (x x' : C.t E A)
+    (H : Choose.Step.t (compile x) (compile x')) : Step.t x x'.
     (*case_eq x.*)
     (* destruct e. *)
     destruct x as [v | c | x f | x1 x2 | x y]; simpl in H.
     - inversion H.
-    - inversion H.
+    - apply Step.Call.
+      inversion H.
       assert (e' : Event.t E) by admit.
       assert (e = e') by admit.
       rewrite H0.
@@ -177,7 +179,7 @@ Module Sound.
       destruct H0.
       rewrite H0.
       apply Step.Call.
-  Qed.
+  Defined.
 
   (*Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
