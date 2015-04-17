@@ -320,6 +320,12 @@ Module Choose.
       - now apply join_left_last.
       - now apply join_right_last.
     Qed.
+
+  Definition call {E A} (c c' : Effect.command E) k k'
+    (H : Step.t c (Choose.Call (A := A) c' k') k)
+    : Step.t c (Choose.Call c k) k.
+    apply Step.Call.
+  Qed.
   End Reverse.
 
   (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
@@ -371,6 +377,11 @@ Module Step.
     t c y k ->
     t c (C.Join _ _ x y) (fun a => C.Join _ _ x (k a)).
 End Step.
+
+Lemma gre {E} (c c' : Effect.command E) k (H_eq : c = c')
+  (H : Step.t c (C.Call c) (fun a => C.Ret _ a))
+  : Step.t c (C.Call c') (fun a => C.Ret _ a).
+Qed.
 
 Module Steps.
   Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
@@ -469,12 +480,11 @@ End Equiv.
 Module Reverse.
   Fixpoint last_step {E A} (x : C.t E A) (v : A)
     (H : Choose.LastStep.t (compile x) v) : LastStep.t x v.
-    destruct x.
+    destruct x; simpl in H.
     - inversion_clear H.
       apply LastStep.Ret.
     - inversion_clear H.
-    - simpl in H.
-      destruct (Choose.Reverse.bind_last _ _ _ H) as [v_x H_x].
+    - destruct (Choose.Reverse.bind_last _ _ _ H) as [v_x H_x].
       apply (LastStep.Let _ _ _ _ v_x).
       + now apply last_step.
       + now apply last_step.
@@ -483,12 +493,20 @@ Module Reverse.
         now apply last_step.
       + apply LastStep.ChooseRight.
         now apply last_step.
-    - simpl in H.
-      destruct v as [v_x v_y].
+    - destruct v as [v_x v_y].
       destruct (Choose.Reverse.join_last H).
       apply LastStep.Join.
       + now apply last_step.
       + now apply last_step.
+  Qed.
+
+  Fixpoint step {E} c {A} (x : C.t E A) k
+    (H : Choose.Step.t c (compile x) (fun a => compile (k a))) : Step.t c x k.
+    (*inversion H.*)
+    destruct x as [v | c' h | x f | x1 x2 | x y]; simpl in H.
+    - inversion H.
+    - inversion_clear H.
+      apply Step.Call.
   Qed.
 
   Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
