@@ -1,5 +1,9 @@
 Require Import Io.All.
+Require SmallSteps.
 
+Local Open Scope type.
+
+Module LeftRight.
 Inductive t (E : Effect.t) : Type -> Type :=
 | Ret : forall A, A -> t E A
 | Call : forall c, t E (Effect.answer E c)
@@ -62,6 +66,15 @@ Module Step.
     t (LeftRight.JoinRight x y) (LeftRight.join x y').
 End Step.
 
+Fixpoint compile {E A} (x : C.t E A) : LeftRight.t E A :=
+  match x with
+  | C.Ret _ v => LeftRight.Ret v
+  | C.Call c => LeftRight.Call c
+  | C.Let _ _ x f => LeftRight.Let (compile x) (fun x => compile (f x))
+  | C.Choose _ x1 x2 => LeftRight.Choose (compile x1) (compile x2)
+  | C.Join _ _ x y => LeftRight.join (compile x) (compile y)
+  end.
+
 Module Compile.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> LeftRight.t E A -> Type :=
   | Ret : forall A (v : A), t (C.Ret _ v) (LeftRight.Ret v)
@@ -76,15 +89,6 @@ Module Compile.
     t x c_x -> t y c_y ->
     t (C.Join _ _ x y) (LeftRight.join c_x c_y).
 
-  Fixpoint compile {E A} (x : C.t E A) : LeftRight.t E A :=
-    match x with
-    | C.Ret _ v => LeftRight.Ret v
-    | C.Call c => LeftRight.Call c
-    | C.Let _ _ x f => LeftRight.Let (compile x) (fun x => compile (f x))
-    | C.Choose _ x1 x2 => LeftRight.Choose (compile x1) (compile x2)
-    | C.Join _ _ x y => LeftRight.join (compile x) (compile y)
-    end.
-
   Fixpoint make {E A} (x : C.t E A) : t x (compile x).
     destruct x.
     - apply Ret.
@@ -96,5 +100,102 @@ Module Compile.
 End Compile.
 
 Module Sound.
+  (*Lemma gre A P (x y : sig (A := A) P) (H : x = y) : proj1_sig x = proj1_sig y.
+    congruence.
+  Qed.
 
+  Lemma gre2 A P (x y : sigT (A := A) P) (H : x = y) : projT1 x = projT1 y.
+    congruence.
+  Qed.*)
+
+Require Import Coq.Logic.Eqdep.
+Check inj_pair2.
+Print Assumptions inj_pairT2.
+
+  (*Lemma gre3 (A : Type) (T : A -> Type) (x : A) (y1 y2 : T x)
+    (H : existT T x y1 = existT T x y2) : y1 = y2.
+    apply (f_equal (@projT2 A T)).
+    assert (projT2 (existT T x y1) = y1).
+    simpl.
+    f_equal
+  Qed.*)
+
+  (*Fixpoint step {E A} {x x' : C.t E A}
+    (H_x : SmallSteps.Step.t x x')
+    : Step.t (compile x) (compile x').
+    destruct H_x; simpl.
+    - apply Step.Call.
+    - apply Step.Let.
+      now apply step.
+    - apply Step.LetDone with (v := v).
+      inversion H_eq.
+      exists (Ret a).
+      rewrite <- (inj_pair2 _ _ _ (Call c) c_x H3).
+      split.
+      + apply Step.Call.
+      + apply Compile.Ret.
+    - *)
+
+  Fixpoint step {E A} {x x' : C.t E A}
+    (H_x : Step.t (compile x) (compile x'))
+    : SmallSteps.Step.t x x'.
+    destruct x; simpl in H_x.
+    - inversion H_x.
+    - inversion H_x.
+      rewrite <- (inj_pair2 _ _ _ (Ret a) (compile x') H3) in H_x.
+      destruct H_x.
+  Defined.
+
+  Fixpoint step {E A} {x : C.t E A} {c_x c_x' : t E A}
+    (H_eq : Compile.t x c_x) (H_x : Step.t c_x c_x')
+    : {x' : C.t E A & SmallSteps.Step.t x x' * Compile.t x' c_x'}.
+    destruct H_x.
+    - inversion H_eq.
+      exists (C.Ret _ a).
+      rewrite H4 in H2.
+      rewrite <- (inj_pair2 _ _ _ (C.Call c) x H2).
+      split; constructor.
+    - 
+  Defined.
+
+  Fixpoint step {E A} {x x' : C.t E A} {c_x : t E A}
+    (H_eq : Compile.t x c_x) (H_x : SmallSteps.Step.t x x')
+    : {c_x' : t E A & Step.t c_x c_x' * Compile.t x' c_x'}.
+    destruct H_x.
+    - inversion H_eq.
+      exists (Ret a).
+      rewrite <- (inj_pair2 _ _ _ (Call c) c_x H3).
+      split.
+      + apply Step.Call.
+      + apply Compile.Ret.
+    - 
+      assert (Call c = c_x).
+      Check gre2 _ _ _ _ H3.
+      Compute projT1 (existT (fun x : Type => t E x) (answer E c) (Call c)).
+      apply (f_equal (@projT1 _ _) H3).
+      destruct H_eq.
+      + 
+      inversion_clear H_eq.
+      
+    destruct H_eq.
+    - inversion H_x.
+    - eexists.
+      split.
+      + apply Step.Call.
+      + 
+        destruct H_x.
+        destruct x'.
+        inversion H_x.
+        assert (x' = C.Ret E a).
+        congruence.
+      inversion_clear H_x.
+  Defined.
+
+  Fixpoint last_step {E A} {x : C.t E A} {v : A} c_x
+    (H : LastStep.t c_x v) : Compile.t x c_x -> SmallSteps.LastStep.t x v.
+    destruct H.
+    - intro H_c.
+      destruct H_c.
+      inversion H_c. apply SmallSteps.LastStep.Ret.
+  Defined.
 End Sound.
