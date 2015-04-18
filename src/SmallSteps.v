@@ -47,27 +47,46 @@ Module Step.
 End Step.
 
 Module Schedule.
-  Inductive t {E : Effect.t} (c : Effect.command E)
-    : forall {A}, C.t E A -> Type :=
-  | Call : t c (C.Call c)
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
+  | Call : forall c, t (C.Call c)
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
-    t c x ->
-    t c (C.Let _ _ x f)
+    t x ->
+    t (C.Let _ _ x f)
   | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
-    LastStep.t x v -> t c (f v) ->
-    t c (C.Let _ _ x f)
+    LastStep.t x v -> t (f v) ->
+    t (C.Let _ _ x f)
   | ChooseLeft : forall A (x1 x2 : C.t E A),
-    t c x1 ->
-    t c (C.Choose _ x1 x2)
+    t x1 ->
+    t (C.Choose _ x1 x2)
   | ChooseRight : forall A (x1 x2 : C.t E A),
-    t c x2 ->
-    t c (C.Choose _ x1 x2)
+    t x2 ->
+    t (C.Choose _ x1 x2)
   | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
-    t c x ->
-    t c (C.Join _ _ x y)
+    t x ->
+    t (C.Join _ _ x y)
   | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
-    t c y ->
-    t c (C.Join _ _ x y).
+    t y ->
+    t (C.Join _ _ x y).
+
+  Fixpoint command {E A} {x : C.t E A} (s : t x) : Effect.command E :=
+    match s with
+    | Call c => c
+    | Let _ _ _ _ s | LetDone _ _ _ _ _ _ s
+      | ChooseLeft _ _ _ s | ChooseRight _ _ _ s
+      | JoinLeft _ _ _ _ s | JoinRight _ _ _ _ s => command s
+    end.
+
+  Fixpoint reduce {E A} {x : C.t E A} (s : t x)
+    (a : Effect.answer E (command s)) {struct s} : C.t E A.
+    destruct s.
+    - exact (C.Ret _ a).
+    - exact (C.Let _ _ (reduce _ _ _ s a) f).
+    - exact (reduce _ _ _ s a).
+    - exact (reduce _ _ _ s a).
+    - exact (reduce _ _ _ s a).
+    - exact (C.Join _ _ (reduce _ _ _ s a) y).
+    - exact (C.Join _ _ x (reduce _ _ _ s a)).
+  Defined.
 End Schedule.
 
 (*Module LastSteps.
