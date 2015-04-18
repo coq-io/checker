@@ -162,13 +162,26 @@ Module Sound.
     Defined.
   End Last.
 
+  Definition gre {E A} {x : C.t E A} {v : A} (H : compile x = Choose.Ret v)
+    : x = C.Ret E v.
+    destruct x; simpl in H; try congruence.
+  Admitted.
+
   Fixpoint step {E A} (x x' : C.t E A)
     (H : Choose.Step.t (compile x) (compile x')) : Step.t x x'.
     (*case_eq x.*)
     (* destruct e. *)
     destruct x as [v | c | x f | x1 x2 | x y]; simpl in H.
     - inversion H.
-    - apply Step.Call.
+    - destruct (Choose.Sound.call H).
+      rewrite (gre e).
+      apply Step.Call.
+    - 
+      assert (x' = C.Ret _ x) by admit.
+      rewrite H0.
+      
+      destruct x'.
+      inversion x'.
       inversion H.
       assert (e' : Event.t E) by admit.
       assert (e = e') by admit.
