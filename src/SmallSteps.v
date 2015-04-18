@@ -46,6 +46,30 @@ Module Step.
     t (C.Join _ _ x y) (C.Join _ _ x y').
 End Step.
 
+Module Schedule.
+  Inductive t {E : Effect.t} (c : Effect.command E)
+    : forall {A}, C.t E A -> Type :=
+  | Call : t c (C.Call c)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
+    t c x ->
+    t c (C.Let _ _ x f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
+    LastStep.t x v -> t c (f v) ->
+    t c (C.Let _ _ x f)
+  | ChooseLeft : forall A (x1 x2 : C.t E A),
+    t c x1 ->
+    t c (C.Choose _ x1 x2)
+  | ChooseRight : forall A (x1 x2 : C.t E A),
+    t c x2 ->
+    t c (C.Choose _ x1 x2)
+  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
+    t c x ->
+    t c (C.Join _ _ x y)
+  | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
+    t c y ->
+    t c (C.Join _ _ x y).
+End Schedule.
+
 (*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
     : list (Event.t E) -> C.t E A -> A -> Prop :=

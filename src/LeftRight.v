@@ -1,4 +1,4 @@
-Require Import Io.All.
+(*Require Import Io.All.
 Require SmallSteps.
 
 Local Open Scope type.
@@ -218,3 +218,4 @@ Print Assumptions inj_pairT2.
       inversion H_c. apply SmallSteps.LastStep.Ret.
   Defined.
 End Sound.
+*)
