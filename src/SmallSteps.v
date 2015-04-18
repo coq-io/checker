@@ -64,6 +64,20 @@ Module Steps.
     t (e :: es) x x''.
 End Steps.*)
 
+(*Module Compile.
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
+  | Ret : forall A (v : A), t (C.Ret _ v)
+  | Call : forall c, t (C.Call c)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
+    t x -> (forall v_x, t (f v_x)) ->
+    t (C.Let _ _ x f)
+  | Choose : forall A (x1 x2 : C.t E A),
+    t x1 -> t x2 ->
+    t (C.Choose _ x1 x2)
+  | Join : forall A B (x : C.t E A) (y : C.t E B),
+    .
+End Compile.*)
+
 Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   match x with
   | C.Ret _ v => Choose.Ret v
@@ -167,7 +181,7 @@ Module Sound.
     destruct x; simpl in H; try congruence.
   Admitted.
 
-  Fixpoint step {E A} (x x' : C.t E A)
+  (*Fixpoint step {E A} (x x' : C.t E A)
     (H : Choose.Step.t (compile x) (compile x')) : Step.t x x'.
     (*case_eq x.*)
     (* destruct e. *)
@@ -192,7 +206,7 @@ Module Sound.
       destruct H0.
       rewrite H0.
       apply Step.Call.
-  Defined.
+  Defined.*)
 
   (*Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
