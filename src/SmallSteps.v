@@ -47,6 +47,19 @@ Module Step.
 End Step.
 
 Module Schedule.
+  Inductive t (A : Type) : Type :=
+  | Ret : A -> t A
+  | Choose : (bool -> t A) -> t A.
+End Schedule.
+
+Module Denotation.
+  Inductive t {E : Effect.t} (A : Type) : Type :=
+  | Ret : A -> t A
+  | Call : forall c, (Effect.answer E c -> t A) -> t A
+  | Schedule : Schedule.t (t A) -> t A.
+End Denotation.
+
+(*Module Schedule.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
   | Call : forall c, t (C.Call c)
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
@@ -87,7 +100,7 @@ Module Schedule.
     - exact (C.Join _ _ (reduce _ _ _ s a) y).
     - exact (C.Join _ _ x (reduce _ _ _ s a)).
   Defined.
-End Schedule.
+End Schedule.*)
 
 (*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
