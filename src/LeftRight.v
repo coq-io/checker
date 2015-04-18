@@ -99,6 +99,25 @@ Module Compile.
   Defined.
 End Compile.
 
+Require Import Coq.Logic.Eqdep.
+
+Module Inverse.
+  Fixpoint compile_ret {E A} {x : C.t E A} {v : A} (H : Compile.t x (Ret v))
+    : x = C.Ret _ v.
+    inversion H.
+    rewrite (inj_pair2 _ _ _ _ _ H3) in H2.
+    now rewrite (inj_pair2 _ _ _ _ _ H2).
+  Qed.
+
+  Fixpoint compile_ret {E A} {x : C.t E A} {v : A} (H : compile x = Ret v)
+    : x = C.Ret _ v.
+    destruct x; simpl in H.
+    - assert (x = v).
+      .
+      trivial.
+    - 
+  Qed.
+
 Module Sound.
   (*Lemma gre A P (x y : sig (A := A) P) (H : x = y) : proj1_sig x = proj1_sig y.
     congruence.
@@ -108,7 +127,7 @@ Module Sound.
     congruence.
   Qed.*)
 
-Require Import Coq.Logic.Eqdep.
+
 Check inj_pair2.
 Print Assumptions inj_pairT2.
 
