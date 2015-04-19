@@ -12,6 +12,50 @@ Inductive t {E : Effect.t} {A : Type} : C.t E A -> Prop :=
     (forall y:A, R y x -> T y) -> T x) ->
   forall {A} {x : C.t E A} (l : Location.t x), T l.*)
 
+Check fun {E : Effect.t} {T : forall {A}, C.t E A -> Type} =>
+  Location.t_rect E (fun _ _ l => forall a, T (Location.reduce l a)).
+
+Fixpoint let_ {E A B} (x : C.t E A) (f : A -> C.t E B)
+  (acc_x : t x) (acc_f : forall v, t (f v)) {struct acc_x} : t (C.Let _ _ x f).
+  destruct acc_x as [x H].
+  apply New.
+  intros l.
+  refine (
+    match l as l' in Location.t x return
+      match x with
+      | C.Let _ _ _ _ => forall a, t (Location.reduce l' a)
+      | _ => unit
+      end with
+    | Location.Let _ _ _ _ l_x => _
+    | Location.LetDone _ _ _ _ _ _ l_f_x => _
+    | _ => tt
+    end).
+  - simpl.
+    intro a.
+    apply let_.
+    + apply H.
+    simpl.
+  inversion_clear l.
+  - apply let_.
+Defined.
+
+Fixpoint ww {E A} {x : C.t E A} (l : Location.t x) : t x.
+  destruct l.
+  - exact (New (C.Call c) (fun (l : Location.t (C.Call c)) =>
+      match l in Location.t x
+        return (
+          match x with
+          | C.Call _ => forall a, t (Location.reduce l a)
+          | _ => unit
+          end) with
+      | Location.Call _ => fun a =>
+        New (C.Ret E a) (fun l _ => match l with end)
+      | _ => tt
+      end)).
+  - apply New.
+    
+Qed.
+
 Fixpoint well_founded {E A} (x : C.t E A) : t x :=
   match x with
   | C.Ret _ v => New (C.Ret E v) (fun l _ => match l with end)
@@ -25,6 +69,19 @@ Fixpoint well_founded {E A} (x : C.t E A) : t x :=
           end) with
       | Location.Call _ => fun a =>
         New (C.Ret E a) (fun l _ => match l with end)
+      | _ => tt
+      end)
+  | C.Let _ _ x f =>
+    New (C.Let _ _ x f) (fun (l : Location.t (C.Let _ _ x f)) =>
+      match l in Location.t x
+        return (
+          match x with
+          | C.Let _ _ _ _ => forall a, t (Location.reduce l a)
+          | _ => unit
+          end) with
+      | Location.Let _ _ _ _ l_x => fun a =>
+        any _
+      | Location.LetDone _ _ _ _ _ _ l_f_x => fun a => any _
       | _ => tt
       end)
   end.
