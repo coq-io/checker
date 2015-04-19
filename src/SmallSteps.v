@@ -3,6 +3,30 @@ Require Import Io.All.
 Require Choose.
 
 Import ListNotations.
+Local Open Scope type.
+
+(*Module Value.
+  Fixpoint eval {E : Effect.t} {A : Type} (x : C.t E A) : option A :=
+    match x with
+    | C.Ret _ v => 
+    end.
+
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
+  | Ret : forall A (v : A),
+    t (C.Ret E v) v
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
+    t x v_x -> t (f v_x) v_y ->
+    t (C.Let _ _ x f) v_y
+  | ChooseLeft : forall A (x1 x2 : C.t E A) (v : A),
+    t x1 v ->
+    t (C.Choose _ x1 x2) v
+  | ChooseRight : forall A (x1 x2 : C.t E A) (v : A),
+    t x2 v ->
+    t (C.Choose _ x1 x2) v
+  | Join : forall A B (x : C.t E A) (v_x : A) (y : C.t E B) (v_y : B),
+    t x v_x -> t y v_y ->
+    t (C.Join _ _ x y) (v_x, v_y).
+End Value.*)
 
 Module LastStep.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
@@ -21,6 +45,130 @@ Module LastStep.
     t x v_x -> t y v_y ->
     t (C.Join _ _ x y) (v_x, v_y).
 End LastStep.
+
+Module Location.
+  Inductive t {E : Effect.t} (c : Effect.command E)
+    : forall {A}, C.t E A -> Type :=
+  | Call :
+    t c (C.Call c)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
+    t c x ->
+    t c (C.Let _ _ x f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
+    LastStep.t x v -> t c (f v) ->
+    t c (C.Let _ _ x f)
+  | ChooseLeft : forall A (x1 x2 : C.t E A),
+    t c x1 ->
+    t c (C.Choose _ x1 x2)
+  | ChooseRight : forall A (x1 x2 : C.t E A),
+    t c x2 ->
+    t c (C.Choose _ x1 x2)
+  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
+    t c x ->
+    t c (C.Join _ _ x y)
+  | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
+    t c y ->
+    t c (C.Join _ _ x y).
+
+  Fixpoint run {E A} {c : Effect.command E} {x : C.t E A} (l : t c x)
+    (a : Effect.answer E c) : C.t E A :=
+    match l with
+    | Call => C.Ret _ a
+    | Let _ _ _ f l_x => C.Let _ _ (run l_x a) f
+    | LetDone _ _ _ _ _ _ l_f_x => run l_f_x a
+    | ChooseLeft _ x1 _ l_x2 => C.Choose _ x1 (run l_x2 a)
+    | ChooseRight _ _ x2 l_x1 => C.Choose _ (run l_x1 a) x2
+    | JoinLeft _ _ _ y l_x => C.Join _ _ (run l_x a) y
+    | JoinRight _ _ x _ l_y => C.Join _ _ x (run l_y a)
+    end.
+
+  Module Inversion.
+    (*Lemma ret {E A} {v : A} (l : t (C.Ret E v)) : False.
+      inversion H.
+    Qed.
+
+    Lemma call {E} {c : Effect.command E} {x'} (H : t (C.Call c) x')
+      : exists a, x' = C.Ret _ a.
+      inversion_clear H.
+      eexists.
+      reflexivity.
+    Qed.*)
+
+    Lemma let_ {E A B} {c : Effect.command E} {x : C.t E A} {f : A -> C.t E B}
+      (l : t c (C.Let _ _ x f))
+      : t c x + {v : A & LastStep.t x v * t c (f v)}.
+      inversion l.
+      admit.
+      admit.
+(*      inversion H.
+      - left.
+        eexists.
+        split.
+        + trivial.
+        + admit.
+      - right.
+        admit.*)
+    Qed.
+  End Inversion.
+End Location.
+
+Module Step.
+  Inductive t {E : Effect.t} {A : Type} (x : C.t E A) : C.t E A -> Prop :=
+  | New : forall c (l : Location.t c x) a, t x (Location.run l a).
+End Step.
+
+(*Module Step.
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
+  | Call : forall c, Effect.answer E c -> t (C.Call c)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
+    t x ->
+    t (C.Let _ _ x f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
+    LastStep.t x v -> t (f v) ->
+    t (C.Let _ _ x f)
+  | ChooseLeft : forall A (x1 x2 : C.t E A),
+    t x1 ->
+    t (C.Choose _ x1 x2)
+  | ChooseRight : forall A (x1 x2 : C.t E A),
+    t x2 ->
+    t (C.Choose _ x1 x2)
+  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
+    t x ->
+    t (C.Join _ _ x y)
+  | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
+    t y ->
+    t (C.Join _ _ x y).
+
+  Fixpoint run {E A} {x : C.t E A} (step : t x) : C.t E A :=
+    match step with
+    | Call c a => C.Ret _ a
+    | Let _ _ _ f step_x => C.Let _ _ (run step_x) f
+    | LetDone _ _ _ _ _ _ step_f_x => run step_f_x
+    | ChooseLeft _ x1 _ step_x2 => C.Choose _ x1 (run step_x2)
+    | ChooseRight _ _ x2 step_x1 => C.Choose _ (run step_x1) x2
+    | JoinLeft _ _ _ y step_x => C.Join _ _ (run step_x) y
+    | JoinRight _ _ x _ step_y => C.Join _ _ x (run step_y)
+    end.
+
+  Module Inversion.
+    Lemma ret {E A} {v : A} (H : t (C.Ret E v)) : False.
+      inversion H.
+    Qed.
+
+    Lemma let_ {E A B} {x : C.t E A} {f : A -> C.t E B} (H : t (C.Let _ _ x f))
+      : (exists x', t x x' /\ y = C.Let _ _ x' f) \/
+        (exists v, LastStep.t x v /\ t (f v) y).
+      inversion H.
+      - left.
+        eexists.
+        split.
+        + trivial.
+        + admit.
+      - right.
+        admit.
+    Qed.
+  End Inversion.
+End Step.
 
 Module Step.
   Inductive t {E : Effect.t}
@@ -300,4 +448,4 @@ Module Sound.
       + intro.
         now apply last_traces.
   Qed.*)
-End Sound.
+End Sound.*)

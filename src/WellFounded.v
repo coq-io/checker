@@ -8,7 +8,8 @@ Definition t {E A} (x : C.t E A) : Prop :=
 Lemma ret {E A} (v : A) : t (C.Ret E v).
   apply Acc_intro.
   intros x' H.
-  inversion H.
+  destruct H.
+  inversion l.
 Qed.
 
 Lemma call {E} (c : Effect.command E) : t (C.Call c).
