@@ -1,11 +1,93 @@
 (** * The small-steps relation is well-founded. *)
 Require Import Io.All.
-Require SmallSteps.
+Require Import SmallSteps.
+
+Axiom any : forall (A : Type), A.
+
+Inductive t {E : Effect.t} {A : Type} : C.t E A -> Prop :=
+| New : forall x, (forall (l : Location.t x) a, t (Location.reduce l a)) -> t x.
+
+(*Fixpoint fixpoint {E} {T : forall {A} {x : C.t E A}, Location.t x -> Type}
+  (F : forall {A} {x : C.t E A} (l : Location.t x),
+    (forall y:A, R y x -> T y) -> T x) ->
+  forall {A} {x : C.t E A} (l : Location.t x), T l.*)
+
+Fixpoint well_founded {E A} (x : C.t E A) : t x :=
+  match x with
+  | C.Ret _ v => New (C.Ret E v) (fun l _ => match l with end)
+  | C.Call c =>
+    New (C.Call c) (fun (l : Location.t (C.Call c)) =>
+      match l in Location.t x
+        return (
+          match x with
+          | C.Call _ => forall a, t (Location.reduce l a)
+          | _ => unit
+          end) with
+      | Location.Call _ => fun a =>
+        New (C.Ret E a) (fun l _ => match l with end)
+      | _ => tt
+      end)
+  end.
+
+Fixpoint acc {E A} {P : C.t E A -> Prop} (x : C.t E A)
+  (H : forall (l : Location.t x) a, P (Location.reduce l a)) {struct x}
+  : P x :=
+  match x with
+  | C.Ret _ v => H step_ret v
+  end.
+Qed.
 
 Definition t {E A} (x : C.t E A) : Prop :=
   Acc (fun x x' => SmallSteps.Step.t x' x) x.
 
-Lemma ret {E A} (v : A) : t (C.Ret E v).
+Definition ret {E A} (v : A) : t (C.Ret E v).
+  apply Acc_intro.
+  intros x' H.
+  destruct H as [l a].
+  exact (match l with end).
+Qed.
+
+Lemma call {E} (c : Effect.command E) : t (C.Call c).
+  apply Acc_intro.
+  intros x' H.
+  destruct H as [l a].
+  destruct l.
+  refine (match l with SmallSteps.Location.Call c => ret _ end).
+  Show.
+  apply ret.
+Qed.
+
+Lemma let_ {E A B} (x : C.t E A) (f : A -> C.t E B) : t (C.Let _ _ x f).
+  apply Acc_intro.
+  intros x' H.
+  
+Qed.
+
+Fixpoint well_founded {E A} (x : C.t E A) : t x.
+  refine (
+    match x with
+    | C.Ret _ v => _
+    | C.Call c => _
+    | C.Let _ _ x f => _
+    | C.Choose _ x1 x2 => _
+    | C.Join _ _ x y => _
+    end);
+    apply Acc_intro;
+    intros x' H;
+    destruct H as [l a].
+  - exact (match l with end).
+  - refine (
+    match l with
+    | Location.Call c => 
+    end)
+  Show.
+  destruct x.
+  - apply ret.
+  - apply call.
+  - 
+Qed.
+
+(*Lemma ret {E A} (v : A) : t (C.Ret E v).
   apply Acc_intro.
   intros x' H.
   destruct H.
@@ -70,4 +152,4 @@ Fixpoint acc {E : Effect.t} {A : Type} (x : C.t E A) {struct x}
   - inversion_clear H.
     + apply acc.
     + apply acc.
-Qed.
+Qed.*)

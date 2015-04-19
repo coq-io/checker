@@ -46,29 +46,55 @@ Module LastStep.
     t (C.Join _ _ x y) (v_x, v_y).
 End LastStep.
 
-Module Location.
-  Inductive t {E : Effect.t} (c : Effect.command E)
-    : forall {A}, C.t E A -> Type :=
-  | Call :
-    t c (C.Call c)
+(*Module Gre.
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
-    t c x ->
-    t c (C.Let _ _ x f)
+    t x ->
+    t (C.Let _ _ x f)
+  | Ret : forall A (v : A), t (C.Ret _ v).
+
+  Module Inversion.
+    Definition gre {E A B} (x : C.t E A) (f : A -> C.t E B)
+      (H : t (C.Let _ _ x f)) : t x :=
+      match H with
+      | Let _ _ _ _ H => H
+      end.
+
+    Lemma gre {E A B} (x : C.t E A) (f : A -> C.t E B) (H : t (C.Let _ _ x f))
+      : t x.
+      inversion H.
+    Qed.
+  End Inversion.
+End Gre.*)
+
+(*Module Location.
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
+  | Call : forall c,
+    t (C.Call c)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
+    t x ->
+    t (C.Let _ _ x f)
   | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
-    LastStep.t x v -> t c (f v) ->
-    t c (C.Let _ _ x f)
+    LastStep.t x v -> t (f v) ->
+    t (C.Let _ _ x f)
   | ChooseLeft : forall A (x1 x2 : C.t E A),
-    t c x1 ->
-    t c (C.Choose _ x1 x2)
+    t x1 ->
+    t (C.Choose _ x1 x2)
   | ChooseRight : forall A (x1 x2 : C.t E A),
-    t c x2 ->
-    t c (C.Choose _ x1 x2)
+    t x2 ->
+    t (C.Choose _ x1 x2)
   | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
-    t c x ->
-    t c (C.Join _ _ x y)
+    t x ->
+    t (C.Join _ _ x y)
   | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
-    t c y ->
-    t c (C.Join _ _ x y).
+    t y ->
+    t (C.Join _ _ x y).
+
+  Fixpoint command {E A} {x : C.t E A} (l : t x) : Effect.command E :=
+    match l with
+    | Call c => c
+    | 
+    end.
 
   Fixpoint run {E A} {c : Effect.command E} {x : C.t E A} (l : t c x)
     (a : Effect.answer E c) : C.t E A :=
@@ -115,7 +141,7 @@ End Location.
 Module Step.
   Inductive t {E : Effect.t} {A : Type} (x : C.t E A) : C.t E A -> Prop :=
   | New : forall c (l : Location.t c x) a, t x (Location.run l a).
-End Step.
+End Step.*)
 
 (*Module Step.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
@@ -168,9 +194,9 @@ End Step.
         admit.
     Qed.
   End Inversion.
-End Step.
+End Step.*)
 
-Module Step.
+(*Module Step.
   Inductive t {E : Effect.t}
     : forall {A}, C.t E A -> C.t E A -> Prop :=
   | Call : forall c a, t (C.Call c) (C.Ret _ a)
@@ -193,7 +219,7 @@ Module Step.
     t y y' ->
     t (C.Join _ _ x y) (C.Join _ _ x y').
 
-  Module Inversion.
+  (*Module Inversion.
     Lemma ret {E A} {v : A} {x'} (H : t (C.Ret E v) x') : False.
       inversion H.
     Qed.
@@ -218,8 +244,8 @@ Module Step.
       - right.
         admit.
     Qed.
-  End Inversion.
-End Step.
+  End Inversion.*)
+End Step.*)
 
 Module Schedule.
   Inductive t (A : Type) : Type :=
@@ -233,7 +259,7 @@ Module Denotation.
   | Call : Schedule.t {c : Effect.command E & Effect.answer E c -> t A} -> t A.
 End Denotation.
 
-(*Module Schedule.
+Module Location.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
   | Call : forall c, t (C.Call c)
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
@@ -255,26 +281,55 @@ End Denotation.
     t y ->
     t (C.Join _ _ x y).
 
-  Fixpoint command {E A} {x : C.t E A} (s : t x) : Effect.command E :=
-    match s with
+  Fixpoint command {E A} {x : C.t E A} (l : t x) : Effect.command E :=
+    match l with
     | Call c => c
-    | Let _ _ _ _ s | LetDone _ _ _ _ _ _ s
-      | ChooseLeft _ _ _ s | ChooseRight _ _ _ s
-      | JoinLeft _ _ _ _ s | JoinRight _ _ _ _ s => command s
+    | Let _ _ _ _ l | LetDone _ _ _ _ _ _ l
+      | ChooseLeft _ _ _ l | ChooseRight _ _ _ l
+      | JoinLeft _ _ _ _ l | JoinRight _ _ _ _ l => command l
     end.
 
-  Fixpoint reduce {E A} {x : C.t E A} (s : t x)
-    (a : Effect.answer E (command s)) {struct s} : C.t E A.
-    destruct s.
+  Fixpoint reduce {E A} {x : C.t E A} (l : t x)
+    (a : Effect.answer E (command l)) {struct l} : C.t E A.
+    destruct l.
     - exact (C.Ret _ a).
-    - exact (C.Let _ _ (reduce _ _ _ s a) f).
-    - exact (reduce _ _ _ s a).
-    - exact (reduce _ _ _ s a).
-    - exact (reduce _ _ _ s a).
-    - exact (C.Join _ _ (reduce _ _ _ s a) y).
-    - exact (C.Join _ _ x (reduce _ _ _ s a)).
+    - exact (C.Let _ _ (reduce _ _ _ l a) f).
+    - exact (reduce _ _ _ l a).
+    - exact (reduce _ _ _ l a).
+    - exact (reduce _ _ _ l a).
+    - exact (C.Join _ _ (reduce _ _ _ l a) y).
+    - exact (C.Join _ _ x (reduce _ _ _ l a)).
   Defined.
-End Schedule.*)
+
+  Module Inversion.
+    Definition ret {E A} {v : A} (l : t (C.Ret E v)) : False :=
+      match l with
+      end.
+    Print ret.
+
+    Definition call {E} {c : Effect.command E} (l : t (C.Call c)) : nat :=
+      match l with
+      | Call _ => 12
+      (* | Let _ _ _ _ _ => tt *)
+      end.
+
+    Definition call' {E} {c : Effect.command E} (l : t (C.Call c)) : nat :=
+      match l in t x return match x with C.Call _ => nat | _ => unit end with
+      | Call _ => 12
+      | _ => tt
+      end.
+  End Inversion.
+End Location.
+
+Module Step.
+  Inductive t {E : Effect.t} {A : Type} (x : C.t E A) : C.t E A -> Prop :=
+  | New : forall (l : Location.t x) (a : Effect.answer E (Location.command l)),
+    t x (Location.reduce l a).
+
+  (*Module Inversion.
+    Definition call {E c} (H : t (C.Call c))
+  End Inversion.*)
+End Step.
 
 (*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
@@ -448,4 +503,4 @@ Module Sound.
       + intro.
         now apply last_traces.
   Qed.*)
-End Sound.*)
+End Sound.
