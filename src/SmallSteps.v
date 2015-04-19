@@ -55,8 +55,7 @@ End Schedule.
 Module Denotation.
   Inductive t {E : Effect.t} (A : Type) : Type :=
   | Ret : A -> t A
-  | Call : forall c, (Effect.answer E c -> t A) -> t A
-  | Schedule : Schedule.t (t A) -> t A.
+  | Call : Schedule.t {c : Effect.command E & Effect.answer E c -> t A} -> t A.
 End Denotation.
 
 (*Module Schedule.
