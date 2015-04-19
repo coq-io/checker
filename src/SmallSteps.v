@@ -5,7 +5,7 @@ Require Choose.
 Import ListNotations.
 
 Module LastStep.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Type :=
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
   | Ret : forall A (v : A),
     t (C.Ret E v) v
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
@@ -24,7 +24,7 @@ End LastStep.
 
 Module Step.
   Inductive t {E : Effect.t}
-    : forall {A}, C.t E A -> C.t E A -> Type :=
+    : forall {A}, C.t E A -> C.t E A -> Prop :=
   | Call : forall c a, t (C.Call c) (C.Ret _ a)
   | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
     t x x' ->
@@ -44,6 +44,33 @@ Module Step.
   | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
     t y y' ->
     t (C.Join _ _ x y) (C.Join _ _ x y').
+
+  Module Inversion.
+    Lemma ret {E A} {v : A} {x'} (H : t (C.Ret E v) x') : False.
+      inversion H.
+    Qed.
+
+    Lemma call {E} {c : Effect.command E} {x'} (H : t (C.Call c) x')
+      : exists a, x' = C.Ret _ a.
+      inversion_clear H.
+      eexists.
+      reflexivity.
+    Qed.
+
+    Lemma let_ {E A B} {x : C.t E A} {f : A -> C.t E B} {y}
+      (H : t (C.Let _ _ x f) y)
+      : (exists x', t x x' /\ y = C.Let _ _ x' f) \/
+        (exists v, LastStep.t x v /\ t (f v) y).
+      inversion H.
+      - left.
+        eexists.
+        split.
+        + trivial.
+        + admit.
+      - right.
+        admit.
+    Qed.
+  End Inversion.
 End Step.
 
 Module Schedule.
@@ -142,7 +169,7 @@ Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   | C.Join _ _ x y => Choose.join (compile x) (compile y)
   end.
 
-Module Complete.
+(*Module Complete.
   Module Last.
     Fixpoint step {E A} (x : C.t E A) (v : A) (H : LastStep.t x v)
       : Choose.LastStep.t (compile x) v.
@@ -203,7 +230,7 @@ Module Complete.
       + intro.
         now apply last_traces.
   Qed.*)
-End Complete.
+End Complete.*)
 
 Module Sound.
   Module Last.

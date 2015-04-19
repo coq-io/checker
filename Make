@@ -7,3 +7,4 @@ src/LeftRight.v
 src/Model.v
 src/SmallSteps.v
 src/Trace.v
+src/WellFounded.v
