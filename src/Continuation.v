@@ -221,7 +221,7 @@ Module Step.
     t (Location.Join l) (C.Join (C.Ret v_x) (C.Ret v_y) k) z.
 
   Fixpoint step_ok {E A} (l : Location.t) (x : C.t E A) (x' : Next.t E A)
-    : t l x x' -> Location.option_step l x = Some x'.
+    {struct l} : t l x x' -> Location.option_step l x = Some x'.
     destruct l; destruct x as [v | c' h | x1 x2 | B C x y k];
       try (intro H; assert False by inversion H; tauto);
       simpl.
@@ -293,6 +293,49 @@ Module Step.
         | _ => I
         end).
       now rewrite H_eq.
-    - 
+    - refine (
+        match x' with
+        | Next.JoinRight _ _ x' _ _ => fun H => _
+        | _ => fun H => match _ : False with end
+        end); try (inversion H; tauto).
+      refine (
+        match H in t l x x' return
+          match l with
+          | Location.JoinRight l =>
+            match x with
+            | C.Join _ _ x y k =>
+              match x' with
+              | Next.JoinRight _ _ x' y' k' => Option.bind (Location.option_step l y)
+    (fun y' => Some (Next.JoinRight x y' k)) = Some (Next.JoinRight x' y' k')
+              | _ => Option.bind (Location.option_step l y)
+    (fun y' => Some (Next.JoinRight x y' k)) = Some x'
+              end
+            | _ => False
+            end
+          | _ => True
+          end : Prop with
+        | JoinRight l _ _ _ y _ y' H =>
+          let H_eq := step_ok _ _ l y y' H in
+          _
+        | _ => I
+        end).
+      now rewrite H_eq.
+    - intro H.
+      destruct x; try (inversion H; tauto).
+      destruct y; try (inversion H; tauto).
+      apply step_ok.
+      refine (
+        match H in t l x x' return
+          match l with
+          | Location.Join l =>
+            match x with
+            | C.Join _ _ (C.Ret v_x) (C.Ret v_y) k => t l (k (v_x, v_y)) x'
+            | _ => False
+            end
+          | _ => True
+          end : Prop with
+        | Join _ _ _ _ _ _ _ H => H
+        | _ => I
+        end).
   Qed.
 End Step.
