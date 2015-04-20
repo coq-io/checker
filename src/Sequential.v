@@ -1,5 +1,6 @@
 (** * Evaluation of concurrent computations in a sequential monad. *)
 Require Import Io.All.
+Require Import SmallSteps.
 
 (** * Sequential computations. *)
 Module S.
@@ -39,93 +40,39 @@ Module S.
   End Notations.
 End S.
 
+Module Run.
+  Inductive t : forall {E : Effect.t} {A : Type}, S.t E A -> A -> Type :=
+  | Ret : forall {E A} (x : A), t (S.Ret (E := E) x) x
+  | Call : forall E (c : Effect.command E) (a : Effect.answer E c),
+    t (S.Call (E := E) c) a
+  | Let : forall {E A B} {c_x : S.t E A} {x : A} {c_f : A -> S.t E B} {y : B},
+    t c_x x -> t (c_f x) y -> t (S.Let c_x c_f) y.
+End Run.
+
 Module Eval.
   Import S.Notations.
 
   Module Choose.
-    Inductive t (E : Effect.t) : Type :=
-    | Choose : t E
-    | Call : Effect.command E -> t E.
-    Arguments Choose {E}.
-    Arguments Call {E} _.
+    Inductive t : Set :=
+    | Abort
+    | Choose.
 
-    Definition answer {E : Effect.t} (c : t E) : Type :=
+    Definition answer (c : t) : Type :=
       match c with
-      | Choose => bool
-      | Call c => Effect.answer E c
+      | Abort => Empty_set
+      | Choose => bool 
       end.
 
-    Definition E (E : Effect.t) : Effect.t :=
-      Effect.New (t E) answer.
+    Definition E : Effect.t :=
+      Effect.New t answer.
 
-    Definition choose {E} : S.t (Choose.E E) bool :=
-      S.call (Choose.E E) Choose.
+    Definition abort {A : Type} : S.t E A :=
+      let! x := S.call E Abort in
+      match x with end.
 
-    Definition call {E} (c : Effect.command E)
-      : S.t (Choose.E E) (Effect.answer E c) :=
-      S.call (Choose.E E) (Call c).
+    Definition choose : S.t E bool :=
+      S.call E Choose.
   End Choose.
-
-  Fixpoint eval {E A} (x : C.t E A) : S.t (Choose.E E) A :=
-    match x with
-    | C.Ret _ v => S.ret v
-    | C.Call c => Choose.call c
-    | C.Let _ _ x f =>
-      let! v_x := eval x in
-      eval (f v_x)
-    | C.Choose _ x1 x2 =>
-      let! choice := Choose.choose in
-      if choice then
-        eval x1
-      else
-        eval x2
-    | C.Join _ _ x y =>
-      let! x := eval x in
-      let! y := eval y in
-      match (x, y) with
-      | (inl v_x, inl v_y) => S.ret (inl (v_x, v_y))
-      | (inr c_x, inl _) => S.ret (inr c_x)
-      | (inl _, inr c_y) => S.ret (inr c_y)
-      | (inr c_x, inr c_y) =>
-        let! choice := Choose.choose in
-        if choice then
-          S.ret (inr c_x)
-        else
-          S.ret (inr c_y)
-      end
-    end.
-
-  Fixpoint eval {E A} (x : C.t E A) : S.t Choose.E (A + Effect.command E) :=
-    match x with
-    | C.Ret _ v => S.ret (inl v)
-    | C.Call c => S.ret (inr c)
-    | C.Let _ _ x f =>
-      let! x := eval x in
-      match x with
-      | inl v => eval (f v)
-      | inr c => S.ret (inr c)
-      end
-    | C.Choose _ x1 x2 =>
-      let! choice := Choose.choose in
-      if choice then
-        eval x1
-      else
-        eval x2
-    | C.Join _ _ x y =>
-      let! x := eval x in
-      let! y := eval y in
-      match (x, y) with
-      | (inl v_x, inl v_y) => S.ret (inl (v_x, v_y))
-      | (inr c_x, inl _) => S.ret (inr c_x)
-      | (inl _, inr c_y) => S.ret (inr c_y)
-      | (inr c_x, inr c_y) =>
-        let! choice := Choose.choose in
-        if choice then
-          S.ret (inr c_x)
-        else
-          S.ret (inr c_y)
-      end
-    end.
 
   Fixpoint value {E A} (x : C.t E A) : S.t Choose.E A :=
     match x with
@@ -146,11 +93,26 @@ Module Eval.
       S.ret (x, y)
     end.
 
-  Fixpoint eval {E A} (x : C.t E A) : S.t Choose.E (Effect.command E) :=
-    match x with
-    | C.Ret _ _ => Choose.abort
-    | C.Call c => S.ret c
-    | C.Let _ _ x f =>
-    | _ => Choose.abort
-    end.
+  Fixpoint of_last_step {E A} (x : C.t E A) (v : A) (last_step : LastStep.t x v)
+    : Run.t (value x) v.
+    destruct last_step; simpl.
+    - apply Run.Ret.
+    - eapply Run.Let.
+      + apply of_last_step.
+        apply last_step1.
+      + now apply of_last_step.
+    - eapply Run.Let.
+      + apply (Run.Call Choose.E Choose.Choose true).
+      + now apply of_last_step.
+    - eapply Run.Let.
+      + apply (Run.Call Choose.E Choose.Choose false).
+      + now apply of_last_step.
+    - eapply Run.Let.
+      + apply of_last_step.
+        apply last_step1.
+      + eapply Run.Let.
+        * apply of_last_step.
+          apply last_step2.
+        * apply Run.Ret.
+  Defined.
 End Eval.

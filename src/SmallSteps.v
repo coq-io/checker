@@ -30,7 +30,7 @@ Local Open Scope type.
 End Value.*)
 
 Module LastStep.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Type :=
   | Ret : forall A (v : A),
     t (C.Ret E v) v
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
