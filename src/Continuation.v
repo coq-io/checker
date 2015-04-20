@@ -49,6 +49,15 @@ End C.
     end.*)
 End LastStep.*)
 
+Module Next.
+  Record t (E : Effect.t) (A : Type) : Type := New {
+    c : Effect.command E;
+    k : Effect.answer E c -> C.t E A }.
+  Arguments New {E A} _ _.
+  Arguments c {E A} _.
+  Arguments k {E A} _ _.
+End Next.
+
 Module Location.
   Inductive t : Set :=
   | Call : t
@@ -165,11 +174,11 @@ Module Location.
   Defined.
 
   Fixpoint option_step {E A} (l : Location.t) (x : C.t E A)
-    : option {c : Effect.command E & Effect.answer E c -> C.t E A} :=
+    : option (Next.t E A) :=
     match l with
     | Call =>
       match x with
-      | C.Call c h => Some (existT _ c (fun (a : Effect.answer E c) => h a))
+      | C.Call c h => Some (Next.New c h)
       | _ => None
       end
     | ChooseLeft l =>
@@ -187,8 +196,7 @@ Module Location.
       | C.Join _ _ x y k =>
         Option.bind (option_step l x) (fun x' =>
         let (c, f) := x' in
-        Some (existT _ c (fun (a : Effect.answer E c) =>
-          C.Join (f a) y k)))
+        Some (Next.New c (fun a => C.Join (f a) y k)))
       | _ => None
       end
     | JoinRight l =>
@@ -196,8 +204,7 @@ Module Location.
       | C.Join _ _ x y k =>
         Option.bind (option_step l y) (fun y' =>
         let (c, f) := y' in
-        Some (existT _ c (fun (a : Effect.answer E c) =>
-          C.Join x (f a) k)))
+        Some (Next.New c (fun a => C.Join x (f a) k)))
       | _ => None
       end
     | Join l =>
@@ -227,22 +234,88 @@ Module Location.
 End Location.
 
 Module Step.
-  Inductive t {E A} (c : Effect.command E)
-    : Location.t -> C.t E A -> (Effect.answer E c -> C.t E A) -> Prop :=
-  | Call : forall h, t c Location.Call (C.Call c h) h
+  Inductive t {E A} : Location.t -> C.t E A -> Next.t E A -> Prop :=
+  | Call : forall c h, t Location.Call (C.Call c h) (Next.New c h)
   | ChooseLeft : forall l (x1 x2 : C.t E A) x1',
-    t c l x1 x1' ->
-    t c (Location.ChooseLeft l) (C.Choose x1 x2) x1'
+    t l x1 x1' ->
+    t (Location.ChooseLeft l) (C.Choose x1 x2) x1'
   | ChooseRight : forall l (x1 x2 : C.t E A) x2',
-    t c l x2 x2' ->
-    t c (Location.ChooseRight l) (C.Choose x1 x2) x2'
+    t l x2 x2' ->
+    t (Location.ChooseRight l) (C.Choose x1 x2) x2'
   | JoinLeft : forall l B C (x : C.t E B) (y : C.t E C) k x',
-    t (A := B) c l x x' ->
-    t c (Location.JoinLeft l) (C.Join x y k) (fun a => C.Join (x' a) y k)
+    t (A := B) l x x' ->
+    t (Location.JoinLeft l) (C.Join x y k)
+      (Next.New (Next.c x') (fun a => C.Join (Next.k x' a) y k))
   | JoinRight : forall l B C (x : C.t E B) (y : C.t E C) k y',
-    t (A := C) c l y y' ->
-    t c (Location.JoinRight l) (C.Join x y k) (fun a => C.Join x (y' a) k)
+    t (A := C) l y y' ->
+    t (Location.JoinRight l) (C.Join x y k)
+      (Next.New (Next.c y') (fun a => C.Join x (Next.k y' a) k))
   | Join : forall l B C (v_x : B) (v_y : C) k z,
-    t c l (k (v_x, v_y)) z ->
-    t c (Location.Join l) (C.Join (C.Ret v_x) (C.Ret v_y) k) z.
+    t l (k (v_x, v_y)) z ->
+    t (Location.Join l) (C.Join (C.Ret v_x) (C.Ret v_y) k) z.
+
+  Fixpoint step_ok {E A} (l : Location.t) (x : C.t E A) (x' : Next.t E A)
+    (H : t l x x') : Location.option_step l x = Some x'.
+    destruct l; destruct x as [v | c' h | x1 x2 | B C x y k];
+      try (assert False by inversion H; tauto);
+      simpl.
+    - apply f_equal.
+      exact (
+        match H in t _ x x' return
+          match x with
+          | C.Call c' h => {| Next.c := c'; Next.k := h |} = x'
+          | _ => True
+          end : Prop with
+        | Call _ _ => eq_refl
+        | _ => I
+        end).
+    - apply step_ok.
+      exact (
+        match H in t l x x' return
+          match l with
+          | Location.ChooseLeft l =>
+            match x with
+            | C.Choose x1 _ => t l x1 x'
+            | _ => False
+            end
+          | _ => True
+          end : Prop with
+        | ChooseLeft _ _ _ _ H => H
+        | _ => I
+        end).
+    - apply step_ok.
+      exact (
+        match H in t l x x' return
+          match l with
+          | Location.ChooseRight l =>
+            match x with
+            | C.Choose _ x2 => t l x2 x'
+            | _ => False
+            end
+          | _ => True
+          end : Prop with
+        | ChooseRight _ _ _ _ H => H
+        | _ => I
+        end).
+    - refine (
+        let H :=
+          match H in t l x x' return
+            match l with
+            | Location.JoinLeft l =>
+              match x with
+              | C.Join x y k =>
+                match 
+              | _ => False
+            | _ => True
+            end).
+          match x with
+          | C.Call c' h => {| Next.c := c'; Next.k := h |} = x'
+          | _ => True
+          end : Prop with
+        | Call _ _ => eq_refl
+        | _ => I
+        end).
+      inversion H.
+      destruct x'.
+  Qed.
 End Step.
