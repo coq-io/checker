@@ -223,7 +223,7 @@ Module Step.
   Fixpoint step_ok {E A} (l : Location.t) (x : C.t E A) (x' : Next.t E A)
     {struct l} : t l x x' -> Location.option_step l x = Some x'.
     destruct l; destruct x as [v | c' h | x1 x2 | B C x y k];
-      try (intro H; assert False by inversion H; tauto);
+      try (intro H; assert (f : False) by inversion H; destruct f);
       simpl.
     - intro H.
       apply f_equal.
@@ -287,8 +287,8 @@ Module Step.
             end
           | _ => True
           end : Prop with
-        | JoinLeft l _ _ x _ _ x' H =>
-          let H_eq := step_ok _ _ l x x' H in
+        | JoinLeft _ _ _ x _ _ x' H =>
+          let H_eq := step_ok _ _ _ x x' H in
           _
         | _ => I
         end).
@@ -314,15 +314,15 @@ Module Step.
             end
           | _ => True
           end : Prop with
-        | JoinRight l _ _ _ y _ y' H =>
-          let H_eq := step_ok _ _ l y y' H in
+        | JoinRight _ _ _ _ y _ y' H =>
+          let H_eq := step_ok _ _ _ y y' H in
           _
         | _ => I
         end).
       now rewrite H_eq.
     - intro H.
-      destruct x; try (inversion H; tauto).
-      destruct y; try (inversion H; tauto).
+      destruct x; try (assert (f : False) by inversion H; destruct f).
+      destruct y; try (assert (f : False) by inversion H; destruct f).
       apply step_ok.
       refine (
         match H in t l x x' return
