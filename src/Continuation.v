@@ -233,9 +233,19 @@ Module Location.
   Qed.*)
 End Location.
 
+Module NextPlus.
+  Inductive t (E : Effect.t) (A : Type) : Type :=
+  | Call : forall c, (Effect.answer E c -> C.t E A) -> t E A
+  | JoinLeft : forall B C, t E B -> C.t E C -> (B * C -> C.t E A) -> t E A
+  | JoinRight : forall B C, C.t E B -> t E C -> (B * C -> C.t E A) -> t E A.
+  Arguments Call {E A} _ _.
+  Arguments JoinLeft {E A B C} _ _ _.
+  Arguments JoinRight {E A B C} _ _ _.
+End NextPlus.
+
 Module Step.
-  Inductive t {E A} : Location.t -> C.t E A -> Next.t E A -> Prop :=
-  | Call : forall c h, t Location.Call (C.Call c h) (Next.New c h)
+  Inductive t {E A} : Location.t -> C.t E A -> NextPlus.t E A -> Prop :=
+  | Call : forall c h, t Location.Call (C.Call c h) (NextPlus.Call c h)
   | ChooseLeft : forall l (x1 x2 : C.t E A) x1',
     t l x1 x1' ->
     t (Location.ChooseLeft l) (C.Choose x1 x2) x1'
@@ -244,12 +254,10 @@ Module Step.
     t (Location.ChooseRight l) (C.Choose x1 x2) x2'
   | JoinLeft : forall l B C (x : C.t E B) (y : C.t E C) k x',
     t (A := B) l x x' ->
-    t (Location.JoinLeft l) (C.Join x y k)
-      (Next.New (Next.c x') (fun a => C.Join (Next.k x' a) y k))
+    t (Location.JoinLeft l) (C.Join x y k) (NextPlus.JoinLeft x' y k)
   | JoinRight : forall l B C (x : C.t E B) (y : C.t E C) k y',
     t (A := C) l y y' ->
-    t (Location.JoinRight l) (C.Join x y k)
-      (Next.New (Next.c y') (fun a => C.Join x (Next.k y' a) k))
+    t (Location.JoinRight l) (C.Join x y k) (NextPlus.JoinRight x y' k)
   | Join : forall l B C (v_x : B) (v_y : C) k z,
     t l (k (v_x, v_y)) z ->
     t (Location.Join l) (C.Join (C.Ret v_x) (C.Ret v_y) k) z.
