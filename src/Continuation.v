@@ -207,5 +207,21 @@ Module Location.
       end
     end.
 
-  (*Fixpoint option_step_ok {E A} (l : Location.t) (x : C.t E A) c (H : )*)
+  (*Fixpoint option_step_ok {E A} (l : Location.t) (x : C.t E A) {struct l}
+    : forall (H : Valid.t l x), option_step l x = Some (step l x H).
+    destruct l; destruct x as [v | c h | x1 x2 | B C x y k];
+      intro H; try (assert False by inversion H; tauto);
+      simpl.
+    - reflexivity.
+    - apply option_step_ok.
+    - apply option_step_ok.
+    - refine (
+        match option_step l x as x' with
+        | Some (existT c f) => _
+        | None => _
+        end).
+      destruct (option_step l x); simpl.
+      +
+
+  Qed.*)
 End Location.
