@@ -43,26 +43,57 @@ Module Eval.
   Import S.Notations.
 
   Module Choose.
-    Inductive t : Set :=
-    | Abort
-    | Choose.
+    Inductive t (E : Effect.t) : Type :=
+    | Choose : t E
+    | Call : Effect.command E -> t E.
+    Arguments Choose {E}.
+    Arguments Call {E} _.
 
-    Definition answer (c : t) : Type :=
+    Definition answer {E : Effect.t} (c : t E) : Type :=
       match c with
-      | Abort => Empty_set
-      | Choose => bool 
+      | Choose => bool
+      | Call c => Effect.answer E c
       end.
 
-    Definition E : Effect.t :=
-      Effect.New t answer.
+    Definition E (E : Effect.t) : Effect.t :=
+      Effect.New (t E) answer.
 
-    Definition abort {A : Type} : S.t E A :=
-      let! x := S.call E Abort in
-      match x with end.
+    Definition choose {E} : S.t (Choose.E E) bool :=
+      S.call (Choose.E E) Choose.
 
-    Definition choose : S.t E bool :=
-      S.call E Choose.
+    Definition call {E} (c : Effect.command E)
+      : S.t (Choose.E E) (Effect.answer E c) :=
+      S.call (Choose.E E) (Call c).
   End Choose.
+
+  Fixpoint eval {E A} (x : C.t E A) : S.t (Choose.E E) A :=
+    match x with
+    | C.Ret _ v => S.ret v
+    | C.Call c => Choose.call c
+    | C.Let _ _ x f =>
+      let! v_x := eval x in
+      eval (f v_x)
+    | C.Choose _ x1 x2 =>
+      let! choice := Choose.choose in
+      if choice then
+        eval x1
+      else
+        eval x2
+    | C.Join _ _ x y =>
+      let! x := eval x in
+      let! y := eval y in
+      match (x, y) with
+      | (inl v_x, inl v_y) => S.ret (inl (v_x, v_y))
+      | (inr c_x, inl _) => S.ret (inr c_x)
+      | (inl _, inr c_y) => S.ret (inr c_y)
+      | (inr c_x, inr c_y) =>
+        let! choice := Choose.choose in
+        if choice then
+          S.ret (inr c_x)
+        else
+          S.ret (inr c_y)
+      end
+    end.
 
   Fixpoint eval {E A} (x : C.t E A) : S.t Choose.E (A + Effect.command E) :=
     match x with
