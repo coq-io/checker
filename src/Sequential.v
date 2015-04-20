@@ -2,6 +2,13 @@
 Require Import Io.All.
 Require Import SmallSteps.
 
+Module S.
+  Inductive t (E : Effect.t) (A : Type) : Type :=
+  | Ret : A -> t E A
+  | Call : forall c, (Effect.answer E c -> t E A) -> t E A
+  | Let : forall (B : Type), t E B -> (B -> t E A) -> t E A.
+End S.
+
 (** * Sequential computations. *)
 Module S.
   Inductive t (E : Effect.t) : Type -> Type :=
@@ -114,5 +121,58 @@ Module Eval.
         * apply of_last_step.
           apply last_step2.
         * apply Run.Ret.
+  Defined.
+
+  Definition gre {E A} (v v' : A) (last_step : LastStep.t (C.Ret E v) v') : v = v'.
+    refine (match last_step in LastStep.t (A := A) x v'' return
+      match x with
+      | C.Ret _ v''' => v''' = v'''
+      | _ => True
+      end with
+    | LastStep.Ret _ _ => _
+    | _ => I
+    end).
+    inversion last_step.
+  Qed.
+
+  Fixpoint to_last_step {E A} (x : C.t E A) : forall (v : A) (run : Run.t (value x) v),
+    LastStep.t x v.
+    refine (
+      match x in C.t _ A return
+        forall (v : A), Run.t (value x) v -> LastStep.t x v with
+      | C.Ret _ v => _
+      | C.Call _ => _
+      | C.Let _ _ x f => _
+      | C.Choose _ x1 x2 => _
+      | C.Join _ _ x y => _
+      end); simpl; intros v' run.
+    - Eval cbv in (match S.ret v with
+  | S.Ret A1 v => LastStep.t (C.Ret E v') v'
+  | S.Call _ => LastStep.t (C.Ret E v') v'
+  | S.Let _ _ _ _ => LastStep.t (C.Ret E v') v'
+  end).
+      refine (
+        match run in Run.t x v return
+          match x with
+          | S.Ret _ v => LastStep.t (C.Ret E v) v
+          | _ => LastStep.t (C.Ret E v) v
+          end with
+        | Run.Ret _ _ v => _
+        | _ => _
+        end).
+    
+    inversion_clear run.
+    - 
+  Defined.
+
+  Fixpoint to_last_step {E A} (x : C.t E A)
+    : forall (v : A) (run : Run.t (value x) v), LastStep.t x v.
+    refine (
+      match x with
+      | 
+      end).
+    destruct x; intros v run.
+    - inversion run.
+    apply LastStep.Ret.
   Defined.
 End Eval.
