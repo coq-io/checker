@@ -46,6 +46,56 @@ Module LastStep.
     t (C.Join _ _ x y) (v_x, v_y).
 End LastStep.
 
+Module Denotation.
+  Module Value.
+    Inductive t : Type -> Type :=
+    | Ret : forall A (v : A), t A.
+
+    Definition gre {E} (c : Effect.command E) a (H : LastStep.t (C.Call c) a)
+      : forall {A : Type}, A :=
+      match match H in LastStep.t x v return
+        (match x with
+        | C.Call _ => False
+        | _ => True
+        end) : Prop with
+      | LastStep.Ret _ _ => I
+      | LastStep.Let _ _ _ _ _ _ _ _ => I
+      | LastStep.ChooseLeft _ _ _ _ _ => I
+      | LastStep.ChooseRight _ _ _ _ _ => I
+      | LastStep.Join _ _ _ _ _ _ _ _ => I
+      end with end.
+
+    Fixpoint compile {E A} (x : C.t E A) {struct x}
+      : forall v, LastStep.t x v -> t A.
+      refine (
+        match x return
+          match x with
+          | C.Ret _ _ => forall v, LastStep.t (C.Ret _ v) v -> t A
+          | C.Let _ _ x f => forall v, LastStep.t (C.Let _ _ x f) v -> t A
+          | _ => forall v, LastStep.t x v -> t A
+          end with
+        | C.Ret _ _ => fun v _ => Ret _ v
+        | C.Call c => fun _ H =>
+          match
+            match H in LastStep.t x v return
+              match x with
+              | C.Call _ => False
+              | _ => True
+              end : Prop with
+            | LastStep.Ret _ _ => I
+            | LastStep.Let _ _ _ _ _ _ _ _ => I
+            | LastStep.ChooseLeft _ _ _ _ _ => I
+            | LastStep.ChooseRight _ _ _ _ _ => I
+            | LastStep.Join _ _ _ _ _ _ _ _ => I
+            end with
+          end
+        | C.Let _ _ x f => fun v H =>
+          compile (f v) _
+        end).
+      Show.
+  End Value.
+End Denotation.
+
 (*Module Gre.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
@@ -258,28 +308,6 @@ Module Denotation.
   | Ret : A -> t A
   | Call : Schedule.t {c : Effect.command E & Effect.answer E c -> t A} -> t A.
 End Denotation.
-
-Module Location.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
-  | Call : forall c, t (C.Call c)
-  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
-    t x ->
-    t (C.Let _ _ x f)
-  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
-    LastStep.t x v -> t (f v) ->
-    t (C.Let _ _ x f)
-  | ChooseLeft : forall A (x1 x2 : C.t E A),
-    t x1 ->
-    t (C.Choose _ x1 x2)
-  | ChooseRight : forall A (x1 x2 : C.t E A),
-    t x2 ->
-    t (C.Choose _ x1 x2)
-  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
-    t x ->
-    t (C.Join _ _ x y)
-  | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
-    t y ->
-    t (C.Join _ _ x y).
 
 Module Location.
   Inductive t : Set :=
