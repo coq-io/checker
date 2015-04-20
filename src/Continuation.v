@@ -1,3 +1,5 @@
+Require Import ErrorHandlers.All.
+
 Module Effect.
   Record t := New {
     command : Type;
@@ -127,4 +129,47 @@ Module Location.
       destruct y as [v_y | | |]; try (assert False by inversion H; tauto).
       exact (k (v_x, v_y)).
   Defined.
+
+  Fixpoint option_step {E A} (l : Location.t) (x : C.t E A)
+    : option {c : Effect.command E & Effect.answer E c -> C.t E A} :=
+    match l with
+    | Call =>
+      match x with
+      | C.Call c h => Some (existT _ c (fun (a : Effect.answer E c) => h a))
+      | _ => None
+      end
+    | ChooseLeft l =>
+      match x with
+      | C.Choose x1 _ => option_step l x1
+      | _ => None
+      end
+    | ChooseRight l =>
+      match x with
+      | C.Choose _ x2 => option_step l x2
+      | _ => None
+      end
+    | JoinLeft l =>
+      match x with
+      | C.Join _ _ x y k =>
+        Option.bind (option_step l x) (fun x' =>
+        let (c, f) := x' in
+        Some (existT _ c (fun (a : Effect.answer E c) =>
+          C.Join (f a) y k)))
+      | _ => None
+      end
+    | JoinRight l =>
+      match x with
+      | C.Join _ _ x y k =>
+        Option.bind (option_step l y) (fun y' =>
+        let (c, f) := y' in
+        Some (existT _ c (fun (a : Effect.answer E c) =>
+          C.Join x (f a) k)))
+      | _ => None
+      end
+    | Join l =>
+      match x with
+      | C.Join _ _ (C.Ret v_x) (C.Ret v_y) k => option_step l (k (v_x, v_y))
+      | _ => None
+      end
+    end.
 End Location.
