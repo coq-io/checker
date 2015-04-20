@@ -2,13 +2,6 @@
 Require Import Io.All.
 Require Import SmallSteps.
 
-Module S.
-  Inductive t (E : Effect.t) (A : Type) : Type :=
-  | Ret : A -> t E A
-  | Call : forall c, (Effect.answer E c -> t E A) -> t E A
-  | Let : forall (B : Type), t E B -> (B -> t E A) -> t E A.
-End S.
-
 (** * Sequential computations. *)
 Module S.
   Inductive t (E : Effect.t) : Type -> Type :=
@@ -123,7 +116,7 @@ Module Eval.
         * apply Run.Ret.
   Defined.
 
-  Definition gre {E A} (v v' : A) (last_step : LastStep.t (C.Ret E v) v') : v = v'.
+  (*Definition gre {E A} (v v' : A) (last_step : LastStep.t (C.Ret E v) v') : v = v'.
     refine (match last_step in LastStep.t (A := A) x v'' return
       match x with
       | C.Ret _ v''' => v''' = v'''
@@ -174,5 +167,5 @@ Module Eval.
     destruct x; intros v run.
     - inversion run.
     apply LastStep.Ret.
-  Defined.
+  Defined.*)
 End Eval.

@@ -1,6 +1,7 @@
 -R src Io.Checker
 
 src/Choose.v
+src/Continuation.v
 src/DeadLock.v
 src/Event.v
 src/LeftRight.v
