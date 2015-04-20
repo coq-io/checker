@@ -64,6 +64,38 @@ Module Eval.
       S.call E Choose.
   End Choose.
 
+  Fixpoint eval {E A} (x : C.t E A) : S.t Choose.E (A + Effect.command E) :=
+    match x with
+    | C.Ret _ v => S.ret (inl v)
+    | C.Call c => S.ret (inr c)
+    | C.Let _ _ x f =>
+      let! x := eval x in
+      match x with
+      | inl v => eval (f v)
+      | inr c => S.ret (inr c)
+      end
+    | C.Choose _ x1 x2 =>
+      let! choice := Choose.choose in
+      if choice then
+        eval x1
+      else
+        eval x2
+    | C.Join _ _ x y =>
+      let! x := eval x in
+      let! y := eval y in
+      match (x, y) with
+      | (inl v_x, inl v_y) => S.ret (inl (v_x, v_y))
+      | (inr c_x, inl _) => S.ret (inr c_x)
+      | (inl _, inr c_y) => S.ret (inr c_y)
+      | (inr c_x, inr c_y) =>
+        let! choice := Choose.choose in
+        if choice then
+          S.ret (inr c_x)
+        else
+          S.ret (inr c_y)
+      end
+    end.
+
   Fixpoint value {E A} (x : C.t E A) : S.t Choose.E A :=
     match x with
     | C.Ret _ v => S.ret v
@@ -87,7 +119,7 @@ Module Eval.
     match x with
     | C.Ret _ _ => Choose.abort
     | C.Call c => S.ret c
-    (* | C.Let _ _ x f => *)
+    | C.Let _ _ x f =>
     | _ => Choose.abort
     end.
 End Eval.
