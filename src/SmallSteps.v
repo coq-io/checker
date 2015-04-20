@@ -47,50 +47,7 @@ Module LastStep.
     t (C.Join _ _ x y) (v_x, v_y).
 End LastStep.
 
-Module Eval.
-  Module Choose.
-    Inductive t : Set :=
-    | Abort
-    | Choose.
-
-    Definition answer (c : t) : Type :=
-      match c with
-      | Abort => Empty_set
-      | Choose => bool 
-      end.
-
-    Definition E : Effect.t :=
-      Effect.New t answer.
-
-    Definition abort {A : Type} : C.t E A :=
-      let! x := call E Abort in
-      match x with end.
-
-    Definition choose : C.t E bool :=
-      call E Choose.
-  End Choose.
-
-  Fixpoint eval {E : Effect.t} {A : Type} (x : C.t E A) : C.t Choose.E A :=
-    match x with
-    | C.Ret _ v => ret v
-    | C.Call _ => Choose.abort
-    | C.Let _ _ x f =>
-      let! x := eval x in
-      eval (f x)
-    | C.Choose _ x1 x2 =>
-      let! choice := Choose.choose in
-      if choice then
-        eval x1
-      else
-        eval x2
-    | C.Join _ _ x y =>
-      let! x := eval x in
-      let! y := eval y in
-      ret (x, y)
-    end.
-End Eval.
-
-Module Denotation.
+(*Module Denotation.
   Module Choice.
     Inductive t (A : Type) : Type :=
     | Ret : A -> t A
@@ -180,7 +137,7 @@ Module Denotation.
         end).
       Show.
   End Value.
-End Denotation.
+End Denotation.*)
 
 (*Module Gre.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
@@ -424,7 +381,7 @@ Module Location.
   End Valid.
 End Location.
 
-Module Step.
+(*Module Step.
   Fixpoint step {E} (c : Effect.command E) (l : Location.t)
     (a : Effect.answer E c) {struct l}
     : forall {A} {x : C.t E A}, Location.Valid.t c l x -> C.t E A :=
@@ -437,7 +394,7 @@ Module Step.
       end with
     | Location.Call => fun _ _ _ => C.Ret E a
     end.
-End Step.
+End Step.*)
 
 (*Module Location.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=

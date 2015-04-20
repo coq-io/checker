@@ -5,6 +5,7 @@ src/DeadLock.v
 src/Event.v
 src/LeftRight.v
 src/Model.v
+src/Sequential.v
 src/SmallSteps.v
 src/Trace.v
 src/WellFounded.v
