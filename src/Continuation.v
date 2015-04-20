@@ -16,7 +16,7 @@ Module C.
   Arguments Join {E A B C} _ _ _.
 End C.
 
-Module LastStep.
+(*Module LastStep.
   Inductive t {E : Effect.t} {A : Type} : C.t E A -> A -> Prop :=
   | Ret : forall (v : A), t (C.Ret v) v
   | ChooseLeft : forall (x1 x2 : C.t E A) (v : A),
@@ -45,7 +45,7 @@ Module LastStep.
     | C.Ret v => Some v
     | C.Call 
     end.*)
-End LastStep.
+End LastStep.*)
 
 Module Location.
   Inductive t : Set :=
@@ -71,10 +71,9 @@ Module Location.
     | JoinRight : forall l B C (x : C.t E B) (y : C.t E C) k,
       t (A := C) c l y ->
       t c (Location.JoinRight l) (C.Join x y k)
-    | Join : forall l B C (x : C.t E B) v_x (y : C.t E C) v_y k,
-      LastStep.t x v_x -> LastStep.t y v_y ->
+    | Join : forall l B C (v_x : B) (v_y : C) k,
       t c l (k (v_x, v_y)) ->
-      t c (Location.Join l) (C.Join x y k).
+      t c (Location.Join l) (C.Join (C.Ret v_x) (C.Ret v_y) k).
 
     Definition inversion_call {E A} {c l c' h}
       (H : t c l (C.Call (E := E) (A := A) c' h)) : c = c'.
@@ -82,7 +81,8 @@ Module Location.
     Qed.
   End Valid.
 
-  Fixpoint step {E A} c (l : t) (x : C.t E A) (a : Effect.answer E c) (H : Valid.t c l x) {struct l} : C.t E A.
+  Fixpoint step {E A} c (l : t) (x : C.t E A) (a : Effect.answer E c)
+    (H : Valid.t c l x) {struct l} : C.t E A.
     destruct l; destruct x as [v | c' h | x1 x2 | B C x y k];
       try (assert False by inversion H; tauto).
     - rewrite (Valid.inversion_call H) in a.
@@ -123,20 +123,8 @@ Module Location.
         | Valid.JoinRight _ _ _ _ _ _ H => H
         | _ => I
         end).
-    - exact (
-      refine (
-        match H in Valid.t _ l x return
-          match l with
-          | Location.JoinRight l =>
-            match x with
-            | C.Join _ _ _ y _  => Valid.t c l y
-            | _ => False
-            end
-          | _ => True
-          end : Prop with
-        | Valid.JoinRight _ _ _ _ _ _ H => H
-        | _ => I
-        end).
-      
+    - destruct x as [v_x | | |]; try (assert False by inversion H; tauto).
+      destruct y as [v_y | | |]; try (assert False by inversion H; tauto).
+      exact (k (v_x, v_y)).
   Defined.
 End Location.
