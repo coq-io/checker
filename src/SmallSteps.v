@@ -260,6 +260,35 @@ Module Denotation.
 End Denotation.
 
 Module Location.
+  Inductive t : Set :=
+  | Call : t
+  | Let : t -> t
+  | LetDone : t -> t
+  | ChooseLeft : t -> t
+  | ChooseRight : t -> t
+  | JoinLeft : t -> t
+  | JoinRight : t -> t.
+
+  Module Valid.
+    Inductive t {E : Effect.t} (c : Effect.command E)
+      : Location.t -> forall {A}, C.t E A -> Prop :=
+    | Call : t c Location.Call (C.Call c)
+    | Let : forall l A B (x : C.t E A) (f : A -> C.t E B),
+      t c l x -> t c (Location.Let l) (C.Let _ _ x f)
+    | LetDone : forall l A B (x : C.t E A) (v : A) (f : A -> C.t E B),
+      LastStep.t x v -> t c l (f v) -> t c (Location.LetDone l) (C.Let _ _ x f)
+    | ChooseLeft : forall l A (x1 x2 : C.t E A),
+      t c l x1 -> t c (Location.ChooseLeft l) (C.Choose _ x1 x2)
+    | ChooseRight : forall l A (x1 x2 : C.t E A),
+      t c l x2 -> t c (Location.ChooseRight l) (C.Choose _ x1 x2)
+    | JoinLeft : forall l A B (x : C.t E A) (y : C.t E B),
+      t c l x -> t c (Location.JoinLeft l) (C.Join _ _ x y)
+    | JoinRight : forall l A B (x : C.t E A) (y : C.t E B),
+      t c l y -> t c (Location.JoinRight l) (C.Join _ _ x y).
+  End Valid.
+End Location.
+
+(*Module Location.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
   | Call : forall c, t (C.Call c)
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
@@ -329,7 +358,7 @@ Module Step.
   (*Module Inversion.
     Definition call {E c} (H : t (C.Call c))
   End Inversion.*)
-End Step.
+End Step.*)
 
 (*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}

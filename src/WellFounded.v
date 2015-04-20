@@ -1,4 +1,4 @@
-(** * The small-steps relation is well-founded. *)
+(*(** * The small-steps relation is well-founded. *)
 Require Import Io.All.
 Require Import SmallSteps.
 
@@ -209,4 +209,4 @@ Fixpoint acc {E : Effect.t} {A : Type} (x : C.t E A) {struct x}
   - inversion_clear H.
     + apply acc.
     + apply acc.
-Qed.*)
+Qed.*)*)
