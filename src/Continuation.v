@@ -225,3 +225,24 @@ Module Location.
 
   Qed.*)
 End Location.
+
+Module Step.
+  Inductive t {E A} (c : Effect.command E)
+    : Location.t -> C.t E A -> (Effect.answer E c -> C.t E A) -> Prop :=
+  | Call : forall h, t c Location.Call (C.Call c h) h
+  | ChooseLeft : forall l (x1 x2 : C.t E A) x1',
+    t c l x1 x1' ->
+    t c (Location.ChooseLeft l) (C.Choose x1 x2) x1'
+  | ChooseRight : forall l (x1 x2 : C.t E A) x2',
+    t c l x2 x2' ->
+    t c (Location.ChooseRight l) (C.Choose x1 x2) x2'
+  | JoinLeft : forall l B C (x : C.t E B) (y : C.t E C) k x',
+    t (A := B) c l x x' ->
+    t c (Location.JoinLeft l) (C.Join x y k) (fun a => C.Join (x' a) y k)
+  | JoinRight : forall l B C (x : C.t E B) (y : C.t E C) k y',
+    t (A := C) c l y y' ->
+    t c (Location.JoinRight l) (C.Join x y k) (fun a => C.Join x (y' a) k)
+  | Join : forall l B C (v_x : B) (v_y : C) k z,
+    t c l (k (v_x, v_y)) z ->
+    t c (Location.Join l) (C.Join (C.Ret v_x) (C.Ret v_y) k) z.
+End Step.
