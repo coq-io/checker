@@ -260,6 +260,28 @@ Module Denotation.
 End Denotation.
 
 Module Location.
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
+  | Call : forall c, t (C.Call c)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
+    t x ->
+    t (C.Let _ _ x f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
+    LastStep.t x v -> t (f v) ->
+    t (C.Let _ _ x f)
+  | ChooseLeft : forall A (x1 x2 : C.t E A),
+    t x1 ->
+    t (C.Choose _ x1 x2)
+  | ChooseRight : forall A (x1 x2 : C.t E A),
+    t x2 ->
+    t (C.Choose _ x1 x2)
+  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
+    t x ->
+    t (C.Join _ _ x y)
+  | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
+    t y ->
+    t (C.Join _ _ x y).
+
+Module Location.
   Inductive t : Set :=
   | Call : t
   | Let : t -> t
@@ -287,6 +309,21 @@ Module Location.
       t c l y -> t c (Location.JoinRight l) (C.Join _ _ x y).
   End Valid.
 End Location.
+
+Module Step.
+  Fixpoint step {E} (c : Effect.command E) (l : Location.t)
+    (a : Effect.answer E c) {struct l}
+    : forall {A} {x : C.t E A}, Location.Valid.t c l x -> C.t E A :=
+    (*destruct l; intros A x H.
+    - inversion H.
+  Defined.*)
+    match l return
+      match l with
+      | Location.Call => C.t E (Effect.answer E c)
+      end with
+    | Location.Call => fun _ _ _ => C.Ret E a
+    end.
+End Step.
 
 (*Module Location.
   Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
