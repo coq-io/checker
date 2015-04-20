@@ -29,7 +29,8 @@ Module LastStep.
     t (A := B) x v_x -> t (A := C) y v_y -> t (k (v_x, v_y)) v ->
     t (C.Join x y k) v.
 
-  Definition gre {E A} (v v' : A) (H : t (C.Ret (E := E) v) v') : v = v' :=
+  Definition inversion_ret {E A} (v v' : A) (H : t (C.Ret (E := E) v) v')
+    : v = v' :=
     match H in t x v'' return
       match x with
       | C.Ret v''' => v''' = v''
@@ -39,3 +40,24 @@ Module LastStep.
     | _ => I
     end.
 End LastStep.
+
+Module Step.
+  Inductive t {E A} (c : Effect.command E) (a : Effect.answer E c)
+    : C.t E A -> C.t E A -> Prop :=
+  | Call : forall h, t c a (C.Call c h) (h a)
+  | ChooseLeft : forall (x1 x2 x1' : C.t E A),
+    t c a x1 x1' ->
+    t c a (C.Choose x1 x2) x1'
+  | ChooseRight : forall (x1 x2 x2' : C.t E A),
+    t c a x2 x2' ->
+    t c a (C.Choose x1 x2) x2'
+  | JoinLeft : forall B C (x x' : C.t E B) (y : C.t E C) k,
+    t (A := B) c a x x' ->
+    t c a (C.Join x y k) (C.Join x' y k)
+  | JoinRight : forall B C (x : C.t E B) (y y' : C.t E C) k,
+    t (A := C) c a y y' ->
+    t c a (C.Join x y k) (C.Join x y' k)
+  | Join : forall B C (x : C.t E B) v_x (y : C.t E C) v_y k z,
+    LastStep.t x v_x -> LastStep.t y v_y -> t c a (k (v_x, v_y)) z ->
+    t c a (C.Join x y k) z.
+End Step.
