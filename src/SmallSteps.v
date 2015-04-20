@@ -47,6 +47,48 @@ Module LastStep.
 End LastStep.
 
 Module Denotation.
+  Module Choice.
+    Inductive t (A : Type) : Type :=
+    | Ret : A -> t A
+    | Bind : forall B, t B -> (B -> t A) -> t A
+    | Choose : t A -> t A -> t A.
+    Arguments Ret {A} _.
+    Arguments Bind {A B} _ _.
+    Arguments Choose {A} _ _.
+
+    (*Fixpoint flatten {A : Type} (c : t (option A)) : option (t A) :=
+      match c with
+      | Ret None => None
+      | Ret (Some v) => Some (Ret v)
+      | Bind c f => Bind (flatten c) (fun v => flatten (f v))
+      | Choose c1 c2 =>
+        match flatten c1 with
+        | None => flatten c2
+        | Some c1 =>
+          match flatten c2 with
+          | None => Some c1
+          | Some c2 => Some (Choose c1 c2)
+          end
+        end
+      end.*)
+
+    (*Fixpoint bind {A B : Type} (x : t (option A)) (f : A -> t (option B))
+      : t (option B) :=
+      match x with
+      | Ret None => Ret None
+      | Ret (Some v) => f v
+      | Choose
+      end.*)
+  End Choice.
+
+  Fixpoint values {E A} (x : C.t E A) : Choice.t (option A) :=
+    match x with
+    | C.Ret _ v => Choice.Ret (Some v)
+    | C.Call _ => Choice.Ret None
+    | C.Let _ _ x f => Choice.Bind (values x) (fun v => values (f v))
+    | _ => Choice.Ret None
+    end.
+
   Module Value.
     Inductive t : Type -> Type :=
     | Ret : forall A (v : A), t A.
