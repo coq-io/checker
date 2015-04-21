@@ -25,27 +25,26 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
-    : forall {A}, C.t E A -> C.t E A -> Type :=
-  | Call : t c a (C.Call c) (C.Ret _ a)
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> C.t E A -> Type :=
+  | Call : forall c a, t (C.Call c) (C.Ret _ a)
   | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
-    t c a x x' ->
-    t c a (C.Let _ _ x f) (C.Let _ _ x' f)
+    t x x' ->
+    t (C.Let _ _ x f) (C.Let _ _ x' f)
   | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
-    LastStep.t x v -> t c a (f v) y ->
-    t c a (C.Let _ _ x f) y
+    LastStep.t x v -> t (f v) y ->
+    t (C.Let _ _ x f) y
   | ChooseLeft : forall A (x1 x2 x1' : C.t E A),
-    t c a x1 x1' ->
-    t c a (C.Choose _ x1 x2) x1'
+    t x1 x1' ->
+    t (C.Choose _ x1 x2) x1'
   | ChooseRight : forall A (x1 x2 x2' : C.t E A),
-    t c a x2 x2' ->
-    t c a (C.Choose _ x1 x2) x2'
+    t x2 x2' ->
+    t (C.Choose _ x1 x2) x2'
   | JoinLeft : forall A B (x x' : C.t E A) (y : C.t E B),
-    t c a x x' ->
-    t c a (C.Join _ _ x y) (C.Join _ _ x' y)
+    t x x' ->
+    t (C.Join _ _ x y) (C.Join _ _ x' y)
   | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
-    t c a y y' ->
-    t c a (C.Join _ _ x y) (C.Join _ _ x y').
+    t y y' ->
+    t (C.Join _ _ x y) (C.Join _ _ x y').
 
   (*Module Inversion.
     Lemma ret {E A} {v : A} {x'} (H : t (C.Ret E v) x') : False.
@@ -122,8 +121,8 @@ Module Complete.
     Defined.
   End Last.
 
-  Fixpoint step {E A c a} (x x' : C.t E A) (H : Step.t c a x x')
-    : Choose.Step.t c a (compile x) (compile x').
+  Fixpoint step {E A} (x x' : C.t E A) (H : Step.t x x')
+    : Choose.Step.t (compile x) (compile x').
     destruct H.
     - exact (Choose.Step.Call _ _ _).
     - apply Choose.Complete.bind_right.
@@ -203,6 +202,7 @@ Module Sound.
     destruct x as [v | c | x f | x1 x2 | x y]; simpl in H.
     - inversion H.
     - destruct (Choose.Sound.call H).
+      inversion_clear H.
       rewrite (gre e).
       apply Step.Call.
     - 
