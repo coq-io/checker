@@ -284,8 +284,8 @@ Module Sound.
     Defined.
   End Last.
 
-  Definition call {E A} {c h} {x : Choose.t E A} (H : Step.t (Choose.Call c h) x)
-    : {a : Effect.answer E c | x = h a}.
+  Definition call {E A} {c h} {x : Choose.t E A}
+    (H : Step.t (Choose.Call c h) x) : {a : Effect.answer E c | x = h a}.
     inversion_clear H.
     now eexists.
   Defined.

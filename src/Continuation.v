@@ -220,7 +220,7 @@ Module Step.
     t l (k (v_x, v_y)) z ->
     t (Location.Join l) (C.Join (C.Ret v_x) (C.Ret v_y) k) z.
 
-  Fixpoint step_ok {E A} (l : Location.t) (x : C.t E A) (x' : Next.t E A)
+  (*Fixpoint step_ok {E A} (l : Location.t) (x : C.t E A) (x' : Next.t E A)
     {struct l} : t l x x' -> Location.option_step l x = Some x'.
     destruct l; destruct x as [v | c' h | x1 x2 | B C x y k];
       try (intro H; assert (f : False) by inversion H; destruct f);
@@ -337,5 +337,5 @@ Module Step.
         | Join _ _ _ _ _ _ _ H => H
         | _ => I
         end).
-  Qed.
+  Qed.*)
 End Step.
