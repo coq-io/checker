@@ -219,7 +219,11 @@ Module Sound.
         * now apply Step.ChooseRight.
         * exact H_x''_eq.
     - inversion_clear H as [| x1_ x2_ x1' H_x1 | x1_ x2_ x2' H_x2].
-      + 
+      + eexists.
+        split.
+        * apply Step.JoinLeft.
+          destruct (step _ _ x
+          
       inversion_clear H.
       rewrite (gre e).
       apply Step.Call.
