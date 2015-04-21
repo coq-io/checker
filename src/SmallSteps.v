@@ -150,7 +150,7 @@ End Complete.
 
 Module Sound.
   Module Last.
-    Fixpoint step {E A} (x : C.t E A) (v : A)
+    Fixpoint step {E A} {x : C.t E A} {v : A}
       (H : Choose.LastStep.t (compile x) v) : LastStep.t x v.
       destruct x; simpl in H.
       - inversion_clear H.
@@ -174,9 +174,6 @@ Module Sound.
     Defined.
   End Last.
 
-  Definition any {A : Type} : A.
-  Admitted.
-
   Fixpoint step {E A} (x : C.t E A) (H : Choose.Step.t (compile x)) : Step.t x.
     destruct x as [v | c | A B x f | A x1 x2 | A B x y]; simpl in H.
     - inversion H.
@@ -190,7 +187,12 @@ Module Sound.
         | Choose.Step.Call _ _ a => a
         | _ => tt
         end).
-    - apply any.
+    - destruct (Choose.Sound.bind H) as [[v [H_x H_f]] | H_x].
+      + eapply Step.LetDone.
+        * apply (Last.step H_x).
+        * now apply step.
+      + apply Step.Let.
+        now apply step.
     - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
       + apply Step.ChooseLeft.
         now apply step.
