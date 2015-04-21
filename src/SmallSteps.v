@@ -190,18 +190,20 @@ Module Sound.
     Defined.
   End Last.
 
-  Definition gre {E A} {x : C.t E A} {v : A} (H : compile x = Choose.Ret v)
-    : x = C.Ret E v.
-    destruct x; simpl in H; try congruence.
-  Admitted.
-
-  (*Fixpoint step {E A} (x x' : C.t E A)
-    (H : Choose.Step.t (compile x) (compile x')) : Step.t x x'.
+  Fixpoint step {E A} (x : C.t E A) (x' : Choose.t E A)
+    (H : Choose.Step.t (compile x) x')
+    : {x'' : C.t E A & Step.t x x'' * (compile x'' = x')}.
     (*case_eq x.*)
     (* destruct e. *)
     destruct x as [v | c | x f | x1 x2 | x y]; simpl in H.
     - inversion H.
-    - destruct (Choose.Sound.call H).
+    - destruct (Choose.Sound.call H) as [a H_x'].
+      exists (C.Ret _ a).
+      split.
+      + apply Step.Call.
+      + rewrite H_x'.
+        reflexivity.
+    - 
       inversion_clear H.
       rewrite (gre e).
       apply Step.Call.
@@ -221,7 +223,7 @@ Module Sound.
       destruct H0.
       rewrite H0.
       apply Step.Call.
-  Defined.*)
+  Defined.
 
   (*Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
