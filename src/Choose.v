@@ -34,11 +34,11 @@ Module Step.
     t x2 ->
     t (Choose.Choose x1 x2).
 
-  Fixpoint eval {E A} {x : Choose.t E A} (step : t x) : Choose.t E A :=
-    match step with
-    | Call c h a => h a
-    | ChooseLeft x1 x2 step_x1 => eval step_x1
-    | ChooseRight x1 x2 step_x2 => eval step_x2
+  Fixpoint eval {E A} {x : Choose.t E A} (H : t x) : Choose.t E A :=
+    match H with
+    | Call _ h a => h a
+    | ChooseLeft _ _ H_x1 => eval H_x1
+    | ChooseRight _ _ H_x2 => eval H_x2
     end.
 End Step.
 

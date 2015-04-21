@@ -25,53 +25,37 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> C.t E A -> Type :=
-  | Call : forall c a, t (C.Call c) (C.Ret _ a)
-  | Let : forall A B (x x' : C.t E A) (f : A -> C.t E B),
-    t x x' ->
-    t (C.Let _ _ x f) (C.Let _ _ x' f)
-  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B) (y : C.t E B),
-    LastStep.t x v -> t (f v) y ->
-    t (C.Let _ _ x f) y
-  | ChooseLeft : forall A (x1 x2 x1' : C.t E A),
-    t x1 x1' ->
-    t (C.Choose _ x1 x2) x1'
-  | ChooseRight : forall A (x1 x2 x2' : C.t E A),
-    t x2 x2' ->
-    t (C.Choose _ x1 x2) x2'
-  | JoinLeft : forall A B (x x' : C.t E A) (y : C.t E B),
-    t x x' ->
-    t (C.Join _ _ x y) (C.Join _ _ x' y)
-  | JoinRight : forall A B (x : C.t E A) (y y' : C.t E B),
-    t y y' ->
-    t (C.Join _ _ x y) (C.Join _ _ x y').
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
+  | Call : forall c (a : Effect.answer E c), t (C.Call c)
+  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
+    t x ->
+    t (C.Let _ _ x f)
+  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
+    LastStep.t x v -> t (f v) ->
+    t (C.Let _ _ x f)
+  | ChooseLeft : forall A (x1 x2 : C.t E A),
+    t x1 ->
+    t (C.Choose _ x1 x2)
+  | ChooseRight : forall A (x1 x2 : C.t E A),
+    t x2 ->
+    t (C.Choose _ x1 x2)
+  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
+    t x ->
+    t (C.Join _ _ x y)
+  | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
+    t y ->
+    t (C.Join _ _ x y).
 
-  (*Module Inversion.
-    Lemma ret {E A} {v : A} {x'} (H : t (C.Ret E v) x') : False.
-      inversion H.
-    Qed.
-
-    Lemma call {E} {c : Effect.command E} {x'} (H : t (C.Call c) x')
-      : exists a, x' = C.Ret _ a.
-      inversion_clear H.
-      eexists.
-      reflexivity.
-    Qed.
-
-    Lemma let_ {E A B} {x : C.t E A} {f : A -> C.t E B} {y}
-      (H : t (C.Let _ _ x f) y)
-      : (exists x', t x x' /\ y = C.Let _ _ x' f) \/
-        (exists v, LastStep.t x v /\ t (f v) y).
-      inversion H.
-      - left.
-        eexists.
-        split.
-        + trivial.
-        + admit.
-      - right.
-        admit.
-    Qed.
-  End Inversion.*)
+  Fixpoint eval {E A} {x : C.t E A} (H : t x) : C.t E A :=
+    match H with
+    | Call _ a => C.Ret _ a
+    | Let _ _ _ f H_x => C.Let _ _ (eval H_x) f
+    | LetDone _ _ _ _ _ _ H_f => eval H_f
+    | ChooseLeft _ _ _ H_x1 => eval H_x1
+    | ChooseRight _ _ _ H_x2 => eval H_x2
+    | JoinLeft _ _ _ y H_x => C.Join _ _ (eval H_x) y
+    | JoinRight _ _ x _ H_y => C.Join _ _ x (eval H_y)
+    end.
 End Step.
 
 (*Module LastSteps.
@@ -121,10 +105,10 @@ Module Complete.
     Defined.
   End Last.
 
-  Fixpoint step {E A} (x x' : C.t E A) (H : Step.t x x')
-    : Choose.Step.t (compile x) (compile x').
+  Fixpoint step {E A} (x : C.t E A) (H : Step.t x)
+    : Choose.Step.t (compile x).
     destruct H.
-    - exact (Choose.Step.Call _ _ _).
+    - exact (Choose.Step.Call c _ a).
     - apply Choose.Complete.bind_right.
       now apply step.
     - apply (Choose.Complete.bind_left _ v).
