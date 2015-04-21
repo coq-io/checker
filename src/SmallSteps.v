@@ -177,66 +177,31 @@ Module Sound.
   Definition any {A : Type} : A.
   Admitted.
 
-  (*Fixpoint step {E A} (x : C.t E A) (x' : Choose.t E A)
-    (H : Choose.Step.t (compile x) x')
-    : {x'' : C.t E A & Step.t x x'' * (compile x'' = x')}.
-    (*case_eq x.*)
-    (* destruct e. *)
+  Fixpoint step {E A} (x : C.t E A) (H : Choose.Step.t (compile x)) : Step.t x.
     destruct x as [v | c | A B x f | A x1 x2 | A B x y]; simpl in H.
     - inversion H.
-    - destruct (Choose.Sound.call H) as [a H_x'].
-      exists (C.Ret _ a).
-      split.
-      + apply Step.Call.
-      + rewrite H_x'.
-        reflexivity.
+    - apply Step.Call.
+      exact (
+        match H in Choose.Step.t x return
+          match x with
+          | Choose.Call c _ => Effect.answer E c
+          | _ => unit
+          end with
+        | Choose.Step.Call _ _ a => a
+        | _ => tt
+        end).
     - apply any.
-    - inversion_clear H as [| x1_ x2_ x1' H_x1 | x1_ x2_ x2' H_x2].
-      + destruct (step _ _ x1 x' H_x1) as [x'' [H_x''_step H_x''_eq]].
-        exists x''.
-        split.
-        * now apply Step.ChooseLeft.
-        * exact H_x''_eq.
-      + destruct (step _ _ x2 x' H_x2) as [x'' [H_x''_step H_x''_eq]].
-        exists x''.
-        split.
-        * now apply Step.ChooseRight.
-        * exact H_x''_eq.
-    - inversion_clear H as [| x1_ x2_ x1' H_x1 | x1_ x2_ x2' H_x2].
-      + eexists.
-        split.
-        * apply Step.JoinLeft.
-          destruct (step _ _ x
-          
-      inversion_clear H.
-      rewrite (gre e).
-      apply Step.Call.
-    - 
-      assert (x' = C.Ret _ x) by admit.
-      rewrite H0.
-      
-      destruct x'.
-      inversion x'.
-      inversion H.
-      assert (e' : Event.t E) by admit.
-      assert (e = e') by admit.
-      rewrite H0.
-      rewrite <- H1.
- assert (exists a, x' = C.Ret _ a).
-      admit.
-      destruct H0.
-      rewrite H0.
-      apply Step.Call.
-  Defined.*)
-
-  (*Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
-    (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
-    destruct H.
-    - apply Choose.LastSteps.Nil.
-      now apply last_step.
-    - apply (Choose.LastSteps.Cons _ _ (fun a => compile (k a))).
-      + now apply step.
-      + intro.
-        now apply last_traces.
-  Qed.*)
+    - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
+      + apply Step.ChooseLeft.
+        now apply step.
+      + apply Step.ChooseRight.
+        now apply step.
+    - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
+      + apply Step.JoinLeft.
+        apply step.
+        apply any.
+      + apply Step.JoinRight.
+        apply step.
+        apply any.
+  Defined.
 End Sound.
