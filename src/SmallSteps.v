@@ -190,12 +190,15 @@ Module Sound.
     Defined.
   End Last.
 
+  Definition any {A : Type} : A.
+  Admitted.
+
   Fixpoint step {E A} (x : C.t E A) (x' : Choose.t E A)
     (H : Choose.Step.t (compile x) x')
     : {x'' : C.t E A & Step.t x x'' * (compile x'' = x')}.
     (*case_eq x.*)
     (* destruct e. *)
-    destruct x as [v | c | x f | x1 x2 | x y]; simpl in H.
+    destruct x as [v | c | A B x f | A x1 x2 | A B x y]; simpl in H.
     - inversion H.
     - destruct (Choose.Sound.call H) as [a H_x'].
       exists (C.Ret _ a).
@@ -203,7 +206,20 @@ Module Sound.
       + apply Step.Call.
       + rewrite H_x'.
         reflexivity.
-    - 
+    - apply any.
+    - inversion_clear H as [| x1_ x2_ x1' H_x1 | x1_ x2_ x2' H_x2].
+      + destruct (step _ _ x1 x' H_x1) as [x'' [H_x''_step H_x''_eq]].
+        exists x''.
+        split.
+        * now apply Step.ChooseLeft.
+        * exact H_x''_eq.
+      + destruct (step _ _ x2 x' H_x2) as [x'' [H_x''_step H_x''_eq]].
+        exists x''.
+        split.
+        * now apply Step.ChooseRight.
+        * exact H_x''_eq.
+    - inversion_clear H as [| x1_ x2_ x1' H_x1 | x1_ x2_ x2' H_x2].
+      + 
       inversion_clear H.
       rewrite (gre e).
       apply Step.Call.
