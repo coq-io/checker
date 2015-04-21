@@ -197,11 +197,15 @@ Module Sound.
       + apply Step.ChooseRight.
         now apply step.
     - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
-      + apply Step.JoinLeft.
-        apply step.
-        apply any.
-      + apply Step.JoinRight.
-        apply step.
-        apply any.
+      + destruct (Choose.Sound.join_left H_x1) as [H_x | H_y].
+        * apply Step.JoinLeft.
+          now apply step.
+        * apply Step.JoinRight.
+          now apply step.
+      + destruct (Choose.Sound.join_right H_x2) as [H_x | H_y].
+        * apply Step.JoinLeft.
+          now apply step.
+        * apply Step.JoinRight.
+          now apply step.
   Defined.
 End Sound.

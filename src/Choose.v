@@ -288,6 +288,100 @@ Module Sound.
       - now apply join_right.
     Defined.
   End Last.
+
+  (*Fixpoint map {E A B} {x : t E A} {f : A -> B} (H : Step.t (Choose.map x f))
+    : False.
+    destruct x as [v | c h | x1 x2]; simpl in H.
+    - inversion H.
+    - 
+  Qed.*)
+
+  Fixpoint map {E A B} {x : t E A} {f : A -> B} (H : Step.t (map x f))
+    : Step.t x.
+    destruct x; simpl in H.
+    - inversion H.
+    - apply Step.Call.
+      exact (
+        match H in Step.t x return
+          match x with
+          | Call c _ => answer E c
+          | _ => unit
+          end with
+        | Step.Call _ _ a => a
+        | _ => tt
+        end).
+    - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
+      + apply Step.ChooseLeft.
+        apply (map _ _ _ _ _ H_x1).
+      + apply Step.ChooseRight.
+        apply (map _ _ _ _ _ H_x2).
+  Defined.
+
+  (*Fixpoint join_left_value {E A B} {x : t E A} {v : A} {y : t E B}
+    (H_x : LastStep.t x v) (H : Step.t (Choose.join_left x y))
+    : Step.t y.
+    destruct H_x; unfold join_left in H; simpl in H.
+    - apply (map H).
+    - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
+      + apply (join_left_value _ _ _ _ _ _ H_x H_x1).
+      + apply (join_left_value _ _ _ _ _ _ H_x H_x2).
+      
+  Defined.*)
+
+  Fixpoint join_left {E A B} {x : t E A} {y : t E B}
+    (H : Step.t (Choose.join_left x y)) : Step.t x + Step.t y.
+    destruct x as [v | c h | x1 x2];
+      unfold Choose.join_left in H; simpl in H.
+    - right.
+      apply (map H).
+    - left.
+      apply Step.Call.
+      exact (
+        match H in Step.t x return
+          match x with
+          | Call c _ => answer E c
+          | _ => unit
+          end with
+        | Step.Call _ _ a => a
+        | _ => tt
+        end).
+    - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
+      + destruct (join_left _ _ _ _ _ H_x1) as [H_x | H_y].
+        * left.
+          now apply Step.ChooseLeft.
+        * now right.
+      + destruct (join_left _ _ _ _ _ H_x2) as [H_x | H_y].
+        * left.
+          now apply Step.ChooseRight.
+        * now right.
+  Defined.
+
+  Fixpoint join_right {E A B} {x : t E A} {y : t E B}
+    (H : Step.t (Choose.join_right x y)) : Step.t x + Step.t y.
+    destruct y as [v | c h | y1 y2]; simpl in H.
+    - left.
+      apply (map H).
+    - right.
+      apply Step.Call.
+      exact (
+        match H in Step.t x return
+          match x with
+          | Call c _ => answer E c
+          | _ => unit
+          end with
+        | Step.Call _ _ a => a
+        | _ => tt
+        end).
+    - inversion_clear H as [| x1_ x2_ H_x1 | x1_ x2_ H_x2].
+      + destruct (join_right _ _ _ _ _ H_x1) as [H_x | H_y].
+        * now left.
+        * right.
+          now apply Step.ChooseLeft.
+      + destruct (join_right _ _ _ _ _ H_x2) as [H_x | H_y].
+        * now left.
+        * right.
+          now apply Step.ChooseRight.
+  Defined.
 End Sound.
 
 (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
