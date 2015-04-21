@@ -4,6 +4,7 @@ src/Choose.v
 src/Continuation.v
 src/DeadLock.v
 src/Event.v
+src/Flat.v
 src/LeftRight.v
 src/Model.v
 src/Sequential.v
