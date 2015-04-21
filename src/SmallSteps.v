@@ -193,7 +193,7 @@ Module Sound.
   Definition any {A : Type} : A.
   Admitted.
 
-  Fixpoint step {E A} (x : C.t E A) (x' : Choose.t E A)
+  (*Fixpoint step {E A} (x : C.t E A) (x' : Choose.t E A)
     (H : Choose.Step.t (compile x) x')
     : {x'' : C.t E A & Step.t x x'' * (compile x'' = x')}.
     (*case_eq x.*)
@@ -243,7 +243,7 @@ Module Sound.
       destruct H0.
       rewrite H0.
       apply Step.Call.
-  Defined.
+  Defined.*)
 
   (*Fixpoint last_traces {E A} (x : C.t E A) (trace : Trace.t E A)
     (H : Choose.LastSteps.t (compile x) trace) : LastSteps.t x trace.
