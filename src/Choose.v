@@ -23,33 +23,35 @@ Module LastStep.
     t (Choose.Choose x1 x2) v.
 End LastStep.
 
-Module Step.
+Module Location.
   Inductive t {E : Effect.t} (c : Effect.command E) (A : Type) : Type :=
-  | Call : (Effect.answer E c -> Choose.t E A) -> Effect.answer E c -> t c A
-  | ChooseLeft : t c A -> Choose.t E A -> t c A
-  | ChooseRight : Choose.t E A -> t c A -> t c A.
+  | Call : t c A
+  | ChooseLeft : t c A -> t c A
+  | ChooseRight : t c A -> t c A.
+  Arguments Call {E c A}.
+  Arguments ChooseLeft {E c A} _.
+  Arguments ChooseRight {E c A} _.
 
-  Fixpoint start {E c A} (step : t c A) : Choose.t E A :=
-    match step with
-    | Call h _ => Choose.Call c h
-    | ChooseLeft step_x1 x2 => Choose.Choose (start step_x1) x2
-    | ChooseRight x1 step_x2 => Choose.Choose x1 (start step_x2)
-    end.
+  Module Start.
+    Inductive t {E : Effect.t} {c : Effect.command E} {A : Type}
+      : t c A -> Choose.t E A -> Prop :=
+    | Call : forall h, t Location.Call (Choose.Call c h)
+    | ChooseLeft : forall l_x1 x1 x2,
+      t l_x1 x1 -> t (Location.ChooseLeft l_x1) (Choose.Choose x1 x2)
+    | ChooseRight : forall l_x2 x1 x2,
+      t l_x2 x2 -> t (Location.ChooseRight l_x2) (Choose.Choose x1 x2).
+  End Start.
 
-  Fixpoint answer {E c A} (step : t c A) : Effect.answer E c :=
-    match step with
-    | Call _ a => a
-    | ChooseLeft step_x1 _ => answer step_x1
-    | ChooseRight _ step_x2 => answer step_x2
-    end.
-
-  Fixpoint eval {E c A} (step : t c A) : Choose.t E A :=
-    match step with
-    | Call h a => h a
-    | ChooseLeft step_x1 x2 => Choose.Choose (eval step_x1) x2
-    | ChooseRight x1 step_x2 => Choose.Choose x1 (eval step_x2)
-    end.
-End Step.
+  Module Result.
+    Inductive t {E : Effect.t} {c : Effect.command E} {a : Effect.answer E c}
+      {A : Type} : t c A -> Choose.t E A -> Prop :=
+    | Call : forall h, t Location.Call (h a)
+    | ChooseLeft : forall l_x1 x1,
+      t l_x1 x1 -> t (Location.ChooseLeft l_x1) x1
+    | ChooseRight : forall l_x2 x2,
+      t l_x2 x2 -> t (Location.ChooseRight l_x2) x2.
+  End Result.
+End Location.
 
 (*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
