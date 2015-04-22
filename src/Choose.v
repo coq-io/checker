@@ -23,7 +23,7 @@ Module LastStep.
     t (Choose.Choose x1 x2) v.
 End LastStep.
 
-Module Location.
+Module Path.
   Inductive t {E : Effect.t} (c : Effect.command E) (A : Type) : Type :=
   | Call : t c A
   | ChooseLeft : t c A -> t c A
@@ -34,24 +34,24 @@ Module Location.
 
   Module Start.
     Inductive t {E : Effect.t} {c : Effect.command E} {A : Type}
-      : t c A -> Choose.t E A -> Prop :=
-    | Call : forall h, t Location.Call (Choose.Call c h)
-    | ChooseLeft : forall l_x1 x1 x2,
-      t l_x1 x1 -> t (Location.ChooseLeft l_x1) (Choose.Choose x1 x2)
-    | ChooseRight : forall l_x2 x1 x2,
-      t l_x2 x2 -> t (Location.ChooseRight l_x2) (Choose.Choose x1 x2).
+      : Path.t c A -> Choose.t E A -> Prop :=
+    | Call : forall h, t Path.Call (Choose.Call c h)
+    | ChooseLeft : forall p_x1 x1 x2,
+      t p_x1 x1 -> t (Path.ChooseLeft p_x1) (Choose.Choose x1 x2)
+    | ChooseRight : forall p_x2 x1 x2,
+      t p_x2 x2 -> t (Path.ChooseRight p_x2) (Choose.Choose x1 x2).
   End Start.
 
   Module Result.
     Inductive t {E : Effect.t} {c : Effect.command E} {a : Effect.answer E c}
-      {A : Type} : t c A -> Choose.t E A -> Prop :=
-    | Call : forall h, t Location.Call (h a)
-    | ChooseLeft : forall l_x1 x1,
-      t l_x1 x1 -> t (Location.ChooseLeft l_x1) x1
-    | ChooseRight : forall l_x2 x2,
-      t l_x2 x2 -> t (Location.ChooseRight l_x2) x2.
+      {A : Type} : Path.t c A -> Choose.t E A -> Prop :=
+    | Call : forall h, t Path.Call (h a)
+    | ChooseLeft : forall p_x1 x1,
+      t p_x1 x1 -> t (Path.ChooseLeft p_x1) x1
+    | ChooseRight : forall p_x2 x2,
+      t p_x2 x2 -> t (Path.ChooseRight p_x2) x2.
   End Result.
-End Location.
+End Path.
 
 (*Module LastSteps.
   Inductive t {E : Effect.t} {A : Type}
