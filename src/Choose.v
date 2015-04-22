@@ -3,7 +3,7 @@ Require Import Io.All.
 
 Import ListNotations.
 Local Open Scope type.
-Module Choose.
+
 Inductive t (E : Effect.t) (A : Type) : Type :=
 | Ret : A -> t E A
 | Call : forall c, (Effect.answer E c -> t E A) -> t E A
@@ -289,13 +289,6 @@ Module Sound.
     Defined.
   End Last.
 
-  (*Fixpoint map {E A B} {x : t E A} {f : A -> B} (H : Step.t (Choose.map x f))
-    : False.
-    destruct x as [v | c h | x1 x2]; simpl in H.
-    - inversion H.
-    - 
-  Qed.*)
-
   Fixpoint map {E A B} {x : t E A} {f : A -> B} (H : Step.t (map x f))
     : Step.t x.
     destruct x; simpl in H.
@@ -337,7 +330,19 @@ Module Sound.
         | Step.Call _ _ a => a
         | _ => tt
         end).
-    - 
+    - inversion_clear H as [| x1_ x2_ H_left | x1_ x2_ H_right].
+      + destruct (bind _ _ _ _ _ H_left) as [[v [H_v H_f]]| H_x1].
+        * left.
+          exists v.
+          split; [now apply LastStep.ChooseLeft | apply H_f].
+        * right.
+          now apply Step.ChooseLeft.
+      + destruct (bind _ _ _ _ _ H_right) as [[v [H_v H_f]]| H_x2].
+        * left.
+          exists v.
+          split; [now apply LastStep.ChooseRight | apply H_f].
+        * right.
+          now apply Step.ChooseRight.
   Defined.
 
   Fixpoint join_left {E A B} {x : t E A} {y : t E B}
