@@ -7,7 +7,7 @@ Import C.Notations.
 Local Open Scope type.
 
 Module LastStep.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Type :=
+  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
   | Ret : forall A (v : A),
     t (C.Ret E v) v
   | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
@@ -25,44 +25,52 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> Type :=
-  | Call : forall c (a : Effect.answer E c), t (C.Call c)
-  | Let : forall A B (x : C.t E A) (f : A -> C.t E B),
-    t x ->
-    t (C.Let _ _ x f)
-  | LetDone : forall A B (x : C.t E A) (v : A) (f : A -> C.t E B),
-    LastStep.t x v -> t (f v) ->
-    t (C.Let _ _ x f)
-  | ChooseLeft : forall A (x1 x2 : C.t E A),
-    t x1 ->
-    t (C.Choose _ x1 x2)
-  | ChooseRight : forall A (x1 x2 : C.t E A),
-    t x2 ->
-    t (C.Choose _ x1 x2)
-  | JoinLeft : forall A B (x : C.t E A) (y : C.t E B),
-    t x ->
-    t (C.Join _ _ x y)
-  | JoinRight : forall A B (x : C.t E A) (y : C.t E B),
-    t y ->
-    t (C.Join _ _ x y).
+  Inductive t {E : Effect.t} (c : Effect.command E) : Type -> Type :=
+  | Call : Effect.answer E c -> t c (Effect.answer E c)
+  | Let : forall A B,
+    t c A -> (A -> C.t E B) -> t c B
+  | LetDone : forall A B (x : C.t E A) (v : A),
+    LastStep.t x v -> (A -> C.t E B) -> t c B -> t c B
+  | ChooseLeft : forall A,
+    t c A -> C.t E A -> t c A
+  | ChooseRight : forall A,
+    C.t E A -> t c A -> t c A
+  | JoinLeft : forall A B,
+    t c A -> C.t E B -> t c (A * B)
+  | JoinRight : forall A B,
+    C.t E A -> t c B -> t c (A * B).
 
-  Fixpoint eval {E A} {x : C.t E A} (H : t x) : C.t E A :=
-    match H with
-    | Call _ a => C.Ret _ a
-    | Let _ _ _ f H_x => C.Let _ _ (eval H_x) f
-    | LetDone _ _ _ _ _ _ H_f => eval H_f
-    | ChooseLeft _ _ _ H_x1 => eval H_x1
-    | ChooseRight _ _ _ H_x2 => eval H_x2
-    | JoinLeft _ _ _ y H_x => C.Join _ _ (eval H_x) y
-    | JoinRight _ _ x _ H_y => C.Join _ _ x (eval H_y)
+  Fixpoint start {E c A} (step : t c A) : C.t E A :=
+    match step with
+    | Call _ => C.Call c
+    | Let _ _ step_x f => C.Let _ _ (start step_x) f
+    | LetDone _ _ x _ _ f _ => C.Let _ _ x f
+    | ChooseLeft _ step_x1 x2 => C.Choose _ (start step_x1) x2
+    | ChooseRight _ x1 step_x2 => C.Choose _ x1 (start step_x2)
+    | JoinLeft _ _ step_x1 x2 => C.Join _ _ (start step_x1) x2
+    | JoinRight _ _ x1 step_x2 => C.Join _ _ x1 (start step_x2)
     end.
 
-  Fixpoint event {E A} {x : C.t E A} (H : t x) : Event.t E :=
-    match H with
-    | Call c a => Event.New c a
-    | Let _ _ _ _ H | LetDone _ _ _ _ _ _ H
-      | ChooseLeft _ _ _ H | ChooseRight _ _ _ H
-      | JoinLeft _ _ _ _ H | JoinRight _ _ _ _ H => event H
+  Fixpoint answer {E c A} (step : t c A) : Effect.answer E c :=
+    match step with
+    | Call a => a
+    | Let _ _ step_x _ => answer step_x
+    | LetDone _ _ _ _ _ _ step_f => answer step_f
+    | ChooseLeft _ step_x1 _ => answer step_x1
+    | ChooseRight _ _ step_x2 => answer step_x2
+    | JoinLeft _ _ step_x1 _ => answer step_x1
+    | JoinRight _ _ _ step_x2 => answer step_x2
+    end.
+
+  Fixpoint eval {E c A} (step : t c A) : C.t E A :=
+    match step with
+    | Call a => C.Ret _ a
+    | Let _ _ step_x f => C.Let _ _ (eval step_x) f
+    | LetDone _ _ _ _ _ _ step_f => eval step_f
+    | ChooseLeft _ step_x1 x2 => C.Choose _ (eval step_x1) x2
+    | ChooseRight _ x1 step_x2 => C.Choose _ x1 (eval step_x2)
+    | JoinLeft _ _ step_x y => C.Join _ _ (eval step_x) y
+    | JoinRight _ _ x step_y => C.Join _ _ x (eval step_y)
     end.
 End Step.
 
