@@ -1,6 +1,7 @@
 Require Import Coq.Lists.List.
 Require Import Io.All.
 Require Choose.
+Require Event.
 
 Import ListNotations.
 Import C.Notations.
@@ -55,6 +56,14 @@ Module Step.
     | ChooseRight _ _ _ H_x2 => eval H_x2
     | JoinLeft _ _ _ y H_x => C.Join _ _ (eval H_x) y
     | JoinRight _ _ x _ H_y => C.Join _ _ x (eval H_y)
+    end.
+
+  Fixpoint event {E A} {x : C.t E A} (H : t x) : Event.t E :=
+    match H with
+    | Call c a => Event.New c a
+    | Let _ _ _ _ H | LetDone _ _ _ _ _ _ H
+      | ChooseLeft _ _ _ H | ChooseRight _ _ _ H
+      | JoinLeft _ _ _ _ H | JoinRight _ _ _ _ H => event H
     end.
 End Step.
 
@@ -174,7 +183,7 @@ Module Sound.
     Defined.
   End Last.
 
-  Fixpoint step {E A} (x : C.t E A) (H : Choose.Step.t (compile x)) : Step.t x.
+  Fixpoint step {E A} {x : C.t E A} (H : Choose.Step.t (compile x)) : Step.t x.
     destruct x as [v | c | A B x f | A x1 x2 | A B x y]; simpl in H.
     - inversion H.
     - apply Step.Call.
@@ -210,4 +219,9 @@ Module Sound.
         * apply Step.JoinRight.
           now apply step.
   Defined.
+
+  Fixpoint step_event {E A} (x : C.t E A) (H : Choose.Step.t (compile x))
+    : Step.event (step H) = Choose.Step.event H.
+    destruct x; simpl.
+  Qed.
 End Sound.

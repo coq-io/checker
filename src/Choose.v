@@ -1,9 +1,10 @@
 Require Import Coq.Lists.List.
 Require Import Io.All.
+Require Event.
 
 Import ListNotations.
 Local Open Scope type.
-
+Module Choose.
 Inductive t (E : Effect.t) (A : Type) : Type :=
 | Ret : A -> t E A
 | Call : forall c, (Effect.answer E c -> t E A) -> t E A
@@ -39,6 +40,12 @@ Module Step.
     | Call _ h a => h a
     | ChooseLeft _ _ H_x1 => eval H_x1
     | ChooseRight _ _ H_x2 => eval H_x2
+    end.
+
+  Fixpoint event {E A} {x : Choose.t E A} (H : t x) : Event.t E :=
+    match H with
+    | Call c _ a => Event.New c a
+    | ChooseLeft _ _ H | ChooseRight _ _ H => event H
     end.
 End Step.
 
@@ -289,7 +296,7 @@ Module Sound.
     Defined.
   End Last.
 
-  Fixpoint map {E A B} {x : t E A} {f : A -> B} (H : Step.t (map x f))
+  Fixpoint map {E A B} {x : t E A} {f : A -> B} (H : Step.t (Choose.map x f))
     : Step.t x.
     destruct x; simpl in H.
     - inversion H.
@@ -309,6 +316,28 @@ Module Sound.
       + apply Step.ChooseRight.
         apply (map _ _ _ _ _ H_x2).
   Defined.
+
+  Fixpoint map_event {E A B} {x : t E A} {f : A -> B}
+    (H : Step.t (Choose.map x f)) : Step.event (map H) = Step.event H.
+    destruct x; simpl in H.
+    - inversion H.
+    - refine (
+        match H in Step.t x return
+          match x with
+          | Call c h => _
+          | _ => True
+          end with
+        | Step.Call c _ a => _
+        | _ => I
+        end).
+      simpl.
+      inversion_clear H.
+      simpl.
+intuition.
+congruence. reflexivity.
+    - inversion H.
+      + now rewrite map.
+  Qed.
 
   Fixpoint bind {E A B} {x : t E A} {f : A -> t E B}
     (H : Step.t (Choose.bind x f))
