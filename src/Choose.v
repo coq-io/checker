@@ -18,34 +18,17 @@ Module Last.
     Arguments ChooseLeft {E A} _.
     Arguments ChooseRight {E A} _.
 
-    Module Start.
+    Module Eval.
       Inductive t {E : Effect.t} {A : Type}
-        : Path.t E A -> Choose.t E A -> Prop :=
-      | Ret : forall v, t Path.Ret (Choose.Ret v)
-      | ChooseLeft : forall p_x1 x1 x2,
-        t p_x1 x1 -> t (ChooseLeft p_x1) (Choose.Choose x1 x2)
-      | ChooseRight : forall p_x2 x1 x2,
-        t p_x2 x2 -> t (ChooseRight p_x2) (Choose.Choose x1 x2).
-    End Start.
-
-    Module Result.
-      Inductive t {E : Effect.t} {A : Type} : Path.t E A -> A -> Prop :=
-      | Ret : forall
-    End Result.
+        : Path.t E A -> Choose.t E A -> A -> Prop :=
+      | Ret : forall v, t Path.Ret (Choose.Ret v) v
+      | ChooseLeft : forall p_x1 x1 x2 v,
+        t p_x1 x1 v -> t (ChooseLeft p_x1) (Choose.Choose x1 x2) v
+      | ChooseRight : forall p_x2 x1 x2 v,
+        t p_x2 x2 v -> t (ChooseRight p_x2) (Choose.Choose x1 x2) v.
+    End Eval.
   End Path.
 End Last.
-
-Module LastStep.
-  Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Prop :=
-  | Ret : forall v,
-    t (Choose.Ret v) v
-  | ChooseLeft : forall (x1 x2 : Choose.t E A) (v : A),
-    t x1 v ->
-    t (Choose.Choose x1 x2) v
-  | ChooseRight : forall (x1 x2 : Choose.t E A) (v : A),
-    t x2 v ->
-    t (Choose.Choose x1 x2) v.
-End LastStep.
 
 Module Path.
   Inductive t {E : Effect.t} (c : Effect.command E) (A : Type) : Type :=
@@ -56,25 +39,15 @@ Module Path.
   Arguments ChooseLeft {E c A} _.
   Arguments ChooseRight {E c A} _.
 
-  Module Start.
-    Inductive t {E : Effect.t} {c : Effect.command E} {A : Type}
-      : Path.t c A -> Choose.t E A -> Prop :=
-    | Call : forall h, t Path.Call (Choose.Call c h)
-    | ChooseLeft : forall p_x1 x1 x2,
-      t p_x1 x1 -> t (Path.ChooseLeft p_x1) (Choose.Choose x1 x2)
-    | ChooseRight : forall p_x2 x1 x2,
-      t p_x2 x2 -> t (Path.ChooseRight p_x2) (Choose.Choose x1 x2).
-  End Start.
-
-  Module Result.
+  Module Eval.
     Inductive t {E : Effect.t} {c : Effect.command E} (a : Effect.answer E c)
-      {A : Type} : Path.t c A -> Choose.t E A -> Prop :=
-    | Call : forall h, t a Path.Call (h a)
-    | ChooseLeft : forall p_x1 x1,
-      t a p_x1 x1 -> t a (Path.ChooseLeft p_x1) x1
-    | ChooseRight : forall p_x2 x2,
-      t a p_x2 x2 -> t a (Path.ChooseRight p_x2) x2.
-  End Result.
+      {A : Type} : Path.t c A -> Choose.t E A -> Choose.t E A -> Prop :=
+    | Call : forall h, t a Path.Call (Choose.Call c h) (h a)
+    | ChooseLeft : forall p_x1 x1 x2 v,
+      t a p_x1 x1 v -> t a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
+    | ChooseRight : forall p_x2 x1 x2 v,
+      t a p_x2 x2 v -> t a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
+  End Eval.
 End Path.
 
 Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
