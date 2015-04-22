@@ -1,8 +1,5 @@
-Require Import Coq.Lists.List.
 Require Import Io.All.
 
-Import ListNotations.
-Local Open Scope type.
 Inductive t (E : Effect.t) (A : Type) : Type :=
 | Ret : A -> t E A
 | Call : forall c, (Effect.answer E c -> t E A) -> t E A
@@ -10,6 +7,33 @@ Inductive t (E : Effect.t) (A : Type) : Type :=
 Arguments Ret {E A} _.
 Arguments Call {E A} _ _.
 Arguments Choose {E A} _ _.
+
+Module Last.
+  Module Path.
+    Inductive t (E : Effect.t) (A : Type) : Type :=
+    | Ret
+    | ChooseLeft : t E A -> t E A
+    | ChooseRight : t E A -> t E A.
+    Arguments Ret {E A}.
+    Arguments ChooseLeft {E A} _.
+    Arguments ChooseRight {E A} _.
+
+    Module Start.
+      Inductive t {E : Effect.t} {A : Type}
+        : Path.t E A -> Choose.t E A -> Prop :=
+      | Ret : forall v, t Path.Ret (Choose.Ret v)
+      | ChooseLeft : forall p_x1 x1 x2,
+        t p_x1 x1 -> t (ChooseLeft p_x1) (Choose.Choose x1 x2)
+      | ChooseRight : forall p_x2 x1 x2,
+        t p_x2 x2 -> t (ChooseRight p_x2) (Choose.Choose x1 x2).
+    End Start.
+
+    Module Result.
+      Inductive t {E : Effect.t} {A : Type} : Path.t E A -> A -> Prop :=
+      | Ret : forall
+    End Result.
+  End Path.
+End Last.
 
 Module LastStep.
   Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Prop :=
@@ -43,33 +67,15 @@ Module Path.
   End Start.
 
   Module Result.
-    Inductive t {E : Effect.t} {c : Effect.command E} {a : Effect.answer E c}
+    Inductive t {E : Effect.t} {c : Effect.command E} (a : Effect.answer E c)
       {A : Type} : Path.t c A -> Choose.t E A -> Prop :=
-    | Call : forall h, t Path.Call (h a)
+    | Call : forall h, t a Path.Call (h a)
     | ChooseLeft : forall p_x1 x1,
-      t p_x1 x1 -> t (Path.ChooseLeft p_x1) x1
+      t a p_x1 x1 -> t a (Path.ChooseLeft p_x1) x1
     | ChooseRight : forall p_x2 x2,
-      t p_x2 x2 -> t (Path.ChooseRight p_x2) x2.
+      t a p_x2 x2 -> t a (Path.ChooseRight p_x2) x2.
   End Result.
 End Path.
-
-(*Module LastSteps.
-  Inductive t {E : Effect.t} {A : Type}
-    : list (Event.t E) -> Choose.t E A -> A -> Prop :=
-  | Nil : forall x v, LastStep.t x v -> t [] x v
-  | Cons : forall e x x' es v,
-    Step.t e x x' -> t es x' v ->
-    t (e :: es) x v.
-End LastSteps.
-
-Module Steps.
-  Inductive t {E : Effect.t} {A : Type}
-    : list (Event.t E) -> Choose.t E A -> Choose.t E A -> Prop :=
-  | Nil : forall x, t [] x x
-  | Cons : forall e x x' es x'',
-    Step.t e x x' -> t es x' x'' ->
-    t (e :: es) x x''.
-End Steps.*)
 
 Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   match x with
