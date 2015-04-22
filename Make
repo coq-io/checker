@@ -1,9 +1,5 @@
 -R src Io.Checker
 
 src/Choose.v
-src/Complete.v
-src/DeadLock.v
-src/Event.v
-src/Model.v
-src/SmallSteps.v
-src/Trace.v
+src/Compile.v
+src/Semantics.v
