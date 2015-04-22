@@ -41,20 +41,20 @@ Module ToChoose.
         (Compile.Path.Last.to_choose p) (Compile.to_choose x).
       destruct s; simpl.
       - apply Choose.Last.Start.Ret.
-      - assert (H_v_x : C.Last.eval s1 = v_x) by
-          exact (
-            match H in C.Last.Valid.t s return
-              match s with
-              | C.Last.Start.Let _ _ _ _ v_x _ _ s1 _ =>
-                C.Last.eval s1 = v_x
-              | _ => True
-              end : Prop with
-            | C.Last.Valid.Let _ _ _ _ _ _ _ _ _ H_eq => H_eq
-            | _ => I
-            end).
-        generalize H. clear H.
-        rewrite <- H_v_x in s2.
-        apply (bind .
+      - assert (s2' : C.Last.Start.t p_f (f (C.Last.eval s1))).
+        exact (
+          match H in C.Last.Valid.t s return
+            match s with
+            | C.Last.Start.Let _ _ _ _ _ p_f f s1 _ =>
+              C.Last.Start.t p_f (f (C.Last.eval s1))
+            | _ => unit
+            end with
+          | C.Last.Valid.Let _ _ _ _ _ _ _ s2 => s2
+          | _ => tt
+          end).
+        apply (bind (
+        apply (bind (p_x := p_x) (x := x)). s1 s2').
+        apply to_choose.
         apply s2.
         
         + now apply to_choose.

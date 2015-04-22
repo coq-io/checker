@@ -39,7 +39,7 @@ Module C.
 
     Module Valid.
       Inductive t {E : Effect.t} : forall {A : Type} {p : Path.t} {x : C.t E A},
-        Start.t p x -> Prop :=
+        Start.t p x -> Type :=
       | Ret : forall A (v : A), t (Start.Ret v)
       | Let : forall A B
         p_x x (s_x : Start.t (A := A) p_x x)
