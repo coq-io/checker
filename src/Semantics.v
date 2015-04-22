@@ -78,6 +78,9 @@ Module Choose.
         | ChooseLeft p_x => ChooseLeft (bind p_x p_f)
         | ChooseRight p_x => ChooseRight (bind p_x p_f)
         end.
+
+      Definition join (p_x p_f : t) : t :=
+        ChooseLeft (bind p_x p_f).
     End Path.
 
     Module Eval.

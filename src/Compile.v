@@ -23,7 +23,7 @@ Module Path.
       | C.Last.Path.ChooseRight p_x2 =>
         Choose.Last.Path.ChooseRight (to_choose p_x2)
       | C.Last.Path.Join p_x p_y =>
-        Choose.Last.Path.bind (to_choose p_x) (to_choose p_y)
+        Choose.Last.Path.join (to_choose p_x) (to_choose p_y)
       end.
   End Last.
 
