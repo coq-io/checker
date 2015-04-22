@@ -104,7 +104,7 @@ Definition join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
 Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
   Choose (join_left x y) (join_right x y).
 
-Module Complete.
+(*Module Complete.
   Module Last.
     Fixpoint map {E A B} (x : t E A) (v : A) (f : A -> B)
       (H : LastStep.t x v) : LastStep.t (Choose.map x f) (f v).
@@ -440,7 +440,7 @@ congruence. reflexivity.
         * right.
           now apply Step.ChooseRight.
   Defined.
-End Sound.
+End Sound.*)
 
 (*Fixpoint check {E S} (m : Model.t E S) (s : S) (dec : Model.Dec.t m) {A}
   (x : t E A) : bool.

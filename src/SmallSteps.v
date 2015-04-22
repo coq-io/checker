@@ -93,7 +93,7 @@ Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   | C.Join _ _ x y => Choose.join (compile x) (compile y)
   end.
 
-Module Complete.
+(*Module Complete.
   Module Last.
     Fixpoint step {E A} (x : C.t E A) (v : A) (H : LastStep.t x v)
       : Choose.LastStep.t (compile x) v.
@@ -223,4 +223,4 @@ Module Sound.
     : Step.event (step H) = Choose.Step.event H.
     destruct x; simpl.
   Qed.
-End Sound.
+End Sound.*)
