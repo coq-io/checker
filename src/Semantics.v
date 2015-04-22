@@ -41,26 +41,26 @@ Module C.
   End Path.
 
   Module Eval.
-    Inductive t {E : Effect.t} {c : Effect.command E} (a : Effect.answer E c)
+    Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
       : forall {A : Type}, Path.t -> C.t E A -> C.t E A -> Prop :=
-    | Call : t a Path.Call (C.Call c) (C.Ret E a)
+    | Call : t c a Path.Call (C.Call c) (C.Ret E a)
     | Let : forall A B p_x x x' f,
-      t a p_x x x' -> t a (Path.Let p_x) (C.Let A B x f) (C.Let A B x' f)
+      t c a p_x x x' -> t c a (Path.Let p_x) (C.Let A B x f) (C.Let A B x' f)
     | LetDone : forall A B p_x x v_x p_f f f',
-      Last.Eval.t p_x x v_x -> t a p_f (f v_x) f' ->
-      t a (Path.LetDone p_x p_f) (C.Let A B x f) f'
+      Last.Eval.t p_x x v_x -> t c a p_f (f v_x) f' ->
+      t c a (Path.LetDone p_x p_f) (C.Let A B x f) f'
     | ChooseLeft : forall A p_x1 x1 x1' x2,
-      t a p_x1 x1 x1' ->
-      t a (Path.ChooseLeft p_x1) (C.Choose A x1 x2) (C.Choose A x1' x2)
+      t c a p_x1 x1 x1' ->
+      t c a (Path.ChooseLeft p_x1) (C.Choose A x1 x2) (C.Choose A x1' x2)
     | ChooseRight : forall A x1 p_x2 x2 x2',
-      t a p_x2 x2 x2' ->
-      t a (Path.ChooseRight p_x2) (C.Choose A x1 x2) (C.Choose A x1 x2')
+      t c a p_x2 x2 x2' ->
+      t c a (Path.ChooseRight p_x2) (C.Choose A x1 x2) (C.Choose A x1 x2')
     | JoinLeft : forall A B p_x x x' y,
-      t a p_x x x' ->
-      t a (Path.JoinLeft p_x) (C.Join A B x y) (C.Join A B x' y)
+      t c a p_x x x' ->
+      t c a (Path.JoinLeft p_x) (C.Join A B x y) (C.Join A B x' y)
     | JoinRight : forall A B x p_y y y',
-      t a p_y y y' ->
-      t a (Path.JoinRight p_y) (C.Join A B x y) (C.Join A B x y').
+      t c a p_y y y' ->
+      t c a (Path.JoinRight p_y) (C.Join A B x y) (C.Join A B x y').
   End Eval.
 End C.
 
@@ -106,12 +106,12 @@ Module Choose.
   End Path.
 
   Module Eval.
-    Inductive t {E : Effect.t} {c : Effect.command E} (a : Effect.answer E c)
+    Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
       {A : Type} : Path.t -> Choose.t E A -> Choose.t E A -> Prop :=
-    | Call : forall h, t a Path.Call (Choose.Call c h) (h a)
+    | Call : forall h, t c a Path.Call (Choose.Call c h) (h a)
     | ChooseLeft : forall p_x1 x1 x2 v,
-      t a p_x1 x1 v -> t a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
+      t c a p_x1 x1 v -> t c a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
     | ChooseRight : forall p_x2 x1 x2 v,
-      t a p_x2 x2 v -> t a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
+      t c a p_x2 x2 v -> t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
   End Eval.
 End Choose.
