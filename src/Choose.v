@@ -139,6 +139,16 @@ Module Complete.
     Defined.
   End Last.
 
+  Fixpoint bind_left {E c A B} (x : t E A) (v : A) (f : A -> t E B)
+    (H : LastStep.t x v) (step : Step.t c B) : Step.t c B.
+    destruct H_x.
+    - exact H_f.
+    - apply Step.ChooseLeft.
+      now apply bind_left with (v := v).
+    - apply Step.ChooseRight.
+      now apply bind_left with (v := v).
+  Defined.
+
   Fixpoint bind_left {E A B} (x : t E A) (v : A) (f : A -> t E B)
     (H_x : LastStep.t x v) (H_f : Step.t (f v)) : Step.t (Choose.bind x f).
     destruct H_x.
