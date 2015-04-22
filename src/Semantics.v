@@ -96,6 +96,13 @@ Module Choose.
     | Call : t
     | ChooseLeft : t -> t
     | ChooseRight : t -> t.
+
+    Fixpoint bind (p_x : Last.Path.t) (p_f : t) : t :=
+      match p_x with
+      | Last.Path.Ret => p_f
+      | Last.Path.ChooseLeft p_x => ChooseLeft (bind p_x p_f)
+      | Last.Path.ChooseRight p_x => ChooseRight (bind p_x p_f)
+      end.
   End Path.
 
   Module Eval.

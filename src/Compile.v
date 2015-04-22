@@ -26,4 +26,16 @@ Module Path.
         Choose.Last.Path.bind (to_choose p_x) (to_choose p_y)
       end.
   End Last.
+
+  Fixpoint to_choose (p : C.Path.t) : Choose.Path.t :=
+    match p with
+    | C.Path.Call => Choose.Path.Call
+    | C.Path.Let p_x => to_choose p_x
+    | C.Path.LetDone p_x p_f =>
+      Choose.Path.bind (Last.to_choose p_x) (to_choose p_f)
+    | C.Path.ChooseLeft p_x1 => Choose.Path.ChooseLeft (to_choose p_x1)
+    | C.Path.ChooseRight p_x2 => Choose.Path.ChooseRight (to_choose p_x2)
+    | C.Path.JoinLeft p_x => Choose.Path.ChooseLeft (to_choose p_x)
+    | C.Path.JoinRight p_y => Choose.Path.ChooseRight (to_choose p_y)
+    end.
 End Path.
