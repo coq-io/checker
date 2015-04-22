@@ -98,6 +98,22 @@ Module Choose.
         end.
     End Path.
 
+    Module Start.
+      Inductive t {E : Effect.t} {A : Type} : Path.t -> Choose.t E A -> Type :=
+      | Ret : forall v, t Path.Ret (Choose.Ret v)
+      | ChooseLeft : forall p_x1 x1 x2,
+        t p_x1 x1 -> t (Path.ChooseLeft p_x1) (Choose.Choose x1 x2)
+      | ChooseRight : forall p_x2 x1 x2,
+        t p_x2 x2 -> t (Path.ChooseRight p_x2) (Choose.Choose x1 x2).
+    End Start.
+
+    Fixpoint eval {E A} {p : Path.t} {x : Choose.t E A} (s : Start.t p x) : A :=
+      match s with
+      | Start.Ret v => v
+      | Start.ChooseLeft _ _ _ s => eval s
+      | Start.ChooseRight _ _ _ s => eval s
+      end.
+
     Module Eval.
       Inductive t {E : Effect.t} {A : Type}
         : Path.t -> Choose.t E A -> A -> Prop :=
@@ -106,7 +122,7 @@ Module Choose.
         t p_x1 x1 v -> t (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
       | ChooseRight : forall p_x2 x1 x2 v,
         t p_x2 x2 v -> t (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
-      End Eval.
+    End Eval.
   End Last.
 
   Module Path.

@@ -5,48 +5,47 @@ Require Import Semantics.
 
 Module ToChoose.
   Module Last.
-    Fixpoint bind {E A B} {p_x x} {v_x : A} {p_f f} {v_f : B}
-      (H_x : C.Last.Eval.t p_x x v_x) (H_f : C.Last.Eval.t p_f (f v_x) v_f)
-      : Choose.Last.Eval.t (E := E)
-        (Choose.Last.Path.bind
-          (Compile.Path.Last.to_choose p_x)
-          (Compile.Path.Last.to_choose p_f))
-        (Choose.bind (Compile.to_choose x) (fun v => Compile.to_choose (f v)))
-        v_f.
+    Fixpoint map {E A B} {p x} {f : A -> B} (s : Choose.Last.Start.t p x)
+      : Choose.Last.Start.t (E := E) p (Choose.map x f).
     Admitted.
 
-    (*Fixpoint to_choose {E A} {p : C.Last.Path.t} {x : C.t E A} {v : A}
-      (H : C.Last.Eval.t p x v)
-      : Choose.Last.Eval.t
-        (Compile.Path.Last.to_choose p) (Compile.to_choose x) v.
-      destruct H; simpl.
-      - apply Choose.Last.Eval.Ret.
-      - now apply (bind H).
-      - apply Choose.Last.Eval.ChooseLeft.
+    Fixpoint bind {E A B} {p_x x} {v_x} {p_f f}
+      (s_x : Choose.Last.Start.t (A := A) p_x x)
+      (s_f : Choose.Last.Start.t (A := B) p_f (f v_x))
+      : Choose.Last.Start.t (E := E) (Choose.Last.Path.bind p_x p_f)
+        (Choose.bind x f).
+    Admitted.
+
+    Fixpoint join {E A B} {p_x} {x : Choose.t E A} {p_y} {y : Choose.t E B}
+      (s_x : Choose.Last.Start.t p_x x) (s_y : Choose.Last.Start.t p_y y)
+      : Choose.Last.Start.t (Choose.Last.Path.bind p_x p_y) (Choose.join x y).
+    Admitted.
+
+    Fixpoint bind' {E A B} {p_x x v_x} {p_f f}
+      (s_x : C.Last.Start.t p_x x) (s_f : C.Last.Start.t p_f (f v_x))
+      : Choose.Last.Start.t
+        (Choose.Last.Path.bind
+          (Compile.Path.Last.to_choose p_x) (Compile.Path.Last.to_choose p_f))
+        (Choose.bind (E := E) (A := A) (B := B)
+          (Compile.to_choose x) (fun v => Compile.to_choose (f v))).
+    Admitted.
+
+    Fixpoint to_choose {E A} {p : C.Last.Path.t} {x : C.t E A}
+      (s : C.Last.Start.t p x)
+      : Choose.Last.Start.t
+        (Compile.Path.Last.to_choose p) (Compile.to_choose x).
+      destruct s; simpl.
+      - apply Choose.Last.Start.Ret.
+      - apply (bind (v_x := v_x)).
+        + now apply to_choose.
+        + now apply to_choose.
+      - apply Choose.Last.Start.ChooseLeft.
         now apply to_choose.
-      - apply Choose.Last.Eval.ChooseRight.
+      - apply Choose.Last.Start.ChooseRight.
         now apply to_choose.
-      - induction p_x; simpl.
-        + refine (
-            match H in C.Last.Eval.t p x v_x return
-              match p with
-              | C.Last.Path.Ret =>
-                match x with
-                | C.Ret _ _ =>
-                  Choose.Last.Eval.t (Compile.Path.Last.to_choose p_y)
-  (Choose.join (Compile.to_choose x) (Compile.to_choose y)) (v_x, v_y)
-                | _ =>
-                  Choose.Last.Eval.t (Compile.Path.Last.to_choose p_y)
-    (Choose.join (Compile.to_choose x) (Compile.to_choose y)) (v_x, v_y)
-                end
-              | _ => True
-              end : Prop with
-            | C.Last.Eval.Ret _ _ => _
-            | _ => I
-            end).
-        + apply H.
-        + apply H0.
-      - 
-    Qed.*)
+      - apply join.
+        + now apply to_choose.
+        + now apply to_choose.
+    Qed.
   End Last.
 End ToChoose.

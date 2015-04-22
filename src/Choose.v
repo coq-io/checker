@@ -47,4 +47,11 @@ Definition join_left {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
   join_left_aux x y (fun _ x => join_right x y).
 
 Definition join {E A B} (x : t E A) (y : t E B) : t E (A * B) :=
-  Choose (join_left x y) (join_right x y).
+  match x with
+  | Ret v => map y (fun y => (v, y))
+  | _ =>
+    match y with
+    | Ret v => map x (fun x => (x, v))
+    | _ => Choose (join_left x y) (join_right x y)
+    end
+  end.
