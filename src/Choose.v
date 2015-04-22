@@ -1,10 +1,10 @@
 Require Import Coq.Lists.List.
 Require Import Io.All.
 Require Event.
-
+Module Choose.
 Import ListNotations.
 Local Open Scope type.
-Module Choose.
+
 Inductive t (E : Effect.t) (A : Type) : Type :=
 | Ret : A -> t E A
 | Call : forall c, (Effect.answer E c -> t E A) -> t E A
@@ -26,26 +26,21 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> Type :=
-  | Call : forall c h (a : Effect.answer E c), t (Choose.Call c h)
+  Inductive t {E : Effect.t} (c : Effect.command E) {A : Type}
+    : Choose.t E A -> Type :=
+  | Call : forall h (a : Effect.answer E c), t c (Choose.Call c h)
   | ChooseLeft : forall (x1 x2 : Choose.t E A),
-    t x1 ->
-    t (Choose.Choose x1 x2)
+    t c x1 ->
+    t c (Choose.Choose x1 x2)
   | ChooseRight : forall (x1 x2 : Choose.t E A),
-    t x2 ->
-    t (Choose.Choose x1 x2).
+    t c x2 ->
+    t c (Choose.Choose x1 x2).
 
-  Fixpoint eval {E A} {x : Choose.t E A} (H : t x) : Choose.t E A :=
+  Fixpoint eval {E c A} {x : Choose.t E A} (H : t c x) : Choose.t E A :=
     match H with
-    | Call _ h a => h a
+    | Call h a => h a
     | ChooseLeft _ _ H_x1 => eval H_x1
     | ChooseRight _ _ H_x2 => eval H_x2
-    end.
-
-  Fixpoint event {E A} {x : Choose.t E A} (H : t x) : Event.t E :=
-    match H with
-    | Call c _ a => Event.New c a
-    | ChooseLeft _ _ H | ChooseRight _ _ H => event H
     end.
 End Step.
 
@@ -137,8 +132,8 @@ Module Complete.
     Defined.
   End Last.
 
-  Fixpoint bind_left {E A B} (x : t E A) (v : A) (f : A -> t E B)
-    (H_x : LastStep.t x v) (H_f : Step.t (f v)) : Step.t (Choose.bind x f).
+  Fixpoint bind_left {E c A B} (x : t E A) (v : A) (f : A -> t E B)
+    (H_x : LastStep.t x v) (H_f : Step.t c (f v)) : Step.t c (Choose.bind x f).
     destruct H_x.
     - exact H_f.
     - apply Step.ChooseLeft.
@@ -147,8 +142,8 @@ Module Complete.
       now apply bind_left with (v := v).
   Defined.
 
-  Fixpoint bind_right {E A B} (x : t E A) (f : A -> t E B) (H : Step.t x)
-    : Step.t (Choose.bind x f) (*Choose.bind x' f*).
+  Fixpoint bind_right {E c A B} (x : t E A) (f : A -> t E B) (H : Step.t c x)
+    : Step.t c (Choose.bind x f) (*Choose.bind x' f*).
     destruct H.
     - exact (Step.Call c _ a).
     - apply Step.ChooseLeft.
@@ -157,8 +152,8 @@ Module Complete.
       now apply bind_right.
   Defined.
 
-  Fixpoint join_right {E A B} (x : t E A) (y : t E B) (H : Step.t y)
-    : Step.t (Choose.join_right x y) (*Choose.join x y'*).
+  Fixpoint join_right {E c A B} (x : t E A) (y : t E B) (H : Step.t c y)
+    : Step.t c (Choose.join_right x y) (*Choose.join x y'*).
     destruct H.
     - exact (Step.Call c _ a).
     - apply Step.ChooseLeft.
@@ -167,8 +162,8 @@ Module Complete.
       now apply join_right.
   Defined.
 
-  Fixpoint join_left {E A B} (x : t E A) (y : t E B) (H : Step.t x)
-    : Step.t (Choose.join_left x y) (*Choose.join x' y*).
+  Fixpoint join_left {E c A B} (x : t E A) (y : t E B) (H : Step.t c x)
+    : Step.t c (Choose.join_left x y) (*Choose.join x' y*).
     destruct H.
     - exact (Step.Call c _ a).
     - apply Step.ChooseLeft.
@@ -296,8 +291,22 @@ Module Sound.
     Defined.
   End Last.
 
-  Fixpoint map {E A B} {x : t E A} {f : A -> B} (H : Step.t (Choose.map x f))
-    : Step.t x.
+  Fixpoint map {E c A B} {x : t E A} {f : A -> B}
+    (H : Step.t c (Choose.map x f)) : Step.t c x.
+    refine (
+      match H in Step.t _ x' return
+        match x with
+        | Call c h => Step.t c x'
+        |  => Step.t c x'
+        end with
+      | Step.Call h a => _
+      | _ => _
+      end).
+    inversion H.
+    - destruct x; simpl in *.
+      + congruence.
+      + 
+    - apply Step.Call.
     destruct x; simpl in H.
     - inversion H.
     - apply Step.Call.
