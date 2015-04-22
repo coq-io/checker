@@ -6,23 +6,32 @@ Import ListNotations.
 Import C.Notations.
 Local Open Scope type.
 
-Module LastStep.
-  Inductive t {E : Effect.t} : forall {A}, C.t E A -> A -> Prop :=
-  | Ret : forall A (v : A),
-    t (C.Ret E v) v
-  | Let : forall A B (x : C.t E A) (f : A -> C.t E B) (v_x : A) (v_y : B),
-    t x v_x -> t (f v_x) v_y ->
-    t (C.Let _ _ x f) v_y
-  | ChooseLeft : forall A (x1 x2 : C.t E A) (v : A),
-    t x1 v ->
-    t (C.Choose _ x1 x2) v
-  | ChooseRight : forall A (x1 x2 : C.t E A) (v : A),
-    t x2 v ->
-    t (C.Choose _ x1 x2) v
-  | Join : forall A B (x : C.t E A) (v_x : A) (y : C.t E B) (v_y : B),
-    t x v_x -> t y v_y ->
-    t (C.Join _ _ x y) (v_x, v_y).
-End LastStep.
+Module Last.
+  Module Path.
+    Inductive t : Set :=
+    | Ret : t
+    | Let : t -> t -> t
+    | ChooseLeft : t -> t
+    | ChooseRight : t -> t
+    | Join : t -> t -> t.
+
+    Module Eval.
+      Inductive t {E : Effect.t}
+        : forall {A : Type}, Path.t -> C.t E A -> A -> Prop :=
+      | Ret : forall A (v : A), t Path.Ret (C.Ret _ v) v
+      | Let : forall A B p_x x (v_x : A) p_f f (v_f : B),
+        t p_x x v_x -> t p_f (f v_x) v_f ->
+        t (Path.Let p_x p_f) (C.Let _ _ x f) v_f
+      | ChooseLeft : forall A p_x1 x1 (v_x1 : A) x2,
+        t p_x1 x1 v_x1 -> t (Path.ChooseLeft p_x1) (C.Choose _ x1 x2) v_x1
+      | ChooseRight : forall A x1 p_x2 x2 (v_x2 : A),
+        t p_x2 x2 v_x2 -> t (Path.ChooseRight p_x2) (C.Choose _ x1 x2) v_x2
+      | Join : forall A B p_x x (v_x : A) p_y y (v_y : B),
+        t p_x x v_x -> t p_y y v_y ->
+        t (Path.Join p_x p_y) (C.Join _ _ x y) (v_x, v_y).
+    End Eval.
+  End Path.
+End Last.
 
 Module Step.
   Inductive t {E : Effect.t} (c : Effect.command E) : Type -> Type :=

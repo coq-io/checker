@@ -1,4 +1,4 @@
-Require Import Io.All.
+(*Require Import Io.All.
 Require Choose.
 Require Import SmallSteps.
 
@@ -52,4 +52,4 @@ Module Last.
       + now apply step.
       + now apply step.
   Qed.
-End Last.
+End Last.*)
