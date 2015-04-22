@@ -51,10 +51,10 @@ Module C.
       t c a (Path.LetDone p_x p_f) (C.Let A B x f) f'
     | ChooseLeft : forall A p_x1 x1 x1' x2,
       t c a p_x1 x1 x1' ->
-      t c a (Path.ChooseLeft p_x1) (C.Choose A x1 x2) (C.Choose A x1' x2)
+      t c a (Path.ChooseLeft p_x1) (C.Choose A x1 x2) x1'
     | ChooseRight : forall A x1 p_x2 x2 x2',
       t c a p_x2 x2 x2' ->
-      t c a (Path.ChooseRight p_x2) (C.Choose A x1 x2) (C.Choose A x1 x2')
+      t c a (Path.ChooseRight p_x2) (C.Choose A x1 x2) x2'
     | JoinLeft : forall A B p_x x x' y,
       t c a p_x x x' ->
       t c a (Path.JoinLeft p_x) (C.Join A B x y) (C.Join A B x' y)
@@ -112,9 +112,11 @@ Module Choose.
     Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
       {A : Type} : Path.t -> Choose.t E A -> Choose.t E A -> Prop :=
     | Call : forall h, t c a Path.Call (Choose.Call c h) (h a)
-    | ChooseLeft : forall p_x1 x1 x2 v,
-      t c a p_x1 x1 v -> t c a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
-    | ChooseRight : forall p_x2 x1 x2 v,
-      t c a p_x2 x2 v -> t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
+    | ChooseLeft : forall p_x1 x1 x2 x1',
+      t c a p_x1 x1 x1' ->
+      t c a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) x1'
+    | ChooseRight : forall p_x2 x1 x2 x2',
+      t c a p_x2 x2 x2' ->
+      t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) x2'.
   End Eval.
 End Choose.
