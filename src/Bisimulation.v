@@ -36,12 +36,25 @@ Module ToChoose.
     Admitted.
 
     Fixpoint to_choose {E A} {p : C.Last.Path.t} {x : C.t E A}
-      (s : C.Last.Start.t p x)
+      (s : C.Last.Start.t p x) (H : C.Last.Valid.t s)
       : Choose.Last.Start.t
         (Compile.Path.Last.to_choose p) (Compile.to_choose x).
       destruct s; simpl.
       - apply Choose.Last.Start.Ret.
-      - eapply bind.
+      - assert (H_v_x : C.Last.eval s1 = v_x) by
+          exact (
+            match H in C.Last.Valid.t s return
+              match s with
+              | C.Last.Start.Let _ _ _ _ v_x _ _ s1 _ =>
+                C.Last.eval s1 = v_x
+              | _ => True
+              end : Prop with
+            | C.Last.Valid.Let _ _ _ _ _ _ _ _ _ H_eq => H_eq
+            | _ => I
+            end).
+        generalize H. clear H.
+        rewrite <- H_v_x in s2.
+        apply (bind .
         apply s2.
         
         + now apply to_choose.

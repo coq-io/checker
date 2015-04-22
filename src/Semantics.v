@@ -41,9 +41,10 @@ Module C.
       Inductive t {E : Effect.t} : forall {A : Type} {p : Path.t} {x : C.t E A},
         Start.t p x -> Prop :=
       | Ret : forall A (v : A), t (Start.Ret v)
-      | Let : forall A B p_x x (s_x : Start.t p_x x) (v_x : A)
-          p_f f (s_f : Start.t p_f (f v_x)),
-        eval s_x = v_x -> t (A := B) (Start.Let v_x s_x s_f).
+      | Let : forall A B
+        p_x x (s_x : Start.t (A := A) p_x x)
+        p_f f (s_f : Start.t (A := B) p_f (f (eval s_x))),
+        t (Start.Let (eval s_x) s_x s_f).
     End Valid.
   End Last.
 
@@ -114,7 +115,7 @@ Module Choose.
       | Start.ChooseRight _ _ _ s => eval s
       end.
 
-    Module Eval.
+    (*Module Eval.
       Inductive t {E : Effect.t} {A : Type}
         : Path.t -> Choose.t E A -> A -> Prop :=
       | Ret : forall v, t Path.Ret (Choose.Ret v) v
@@ -122,7 +123,7 @@ Module Choose.
         t p_x1 x1 v -> t (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
       | ChooseRight : forall p_x2 x1 x2 v,
         t p_x2 x2 v -> t (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
-    End Eval.
+    End Eval.*)
   End Last.
 
   Module Path.
@@ -139,7 +140,7 @@ Module Choose.
       end.
   End Path.
 
-  Module Eval.
+  (*Module Eval.
     Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
       {A : Type} : Path.t -> Choose.t E A -> Choose.t E A -> Prop :=
     | Call : forall h, t c a Path.Call (Choose.Call c h) (h a)
@@ -147,5 +148,5 @@ Module Choose.
       t c a p_x1 x1 v -> t c a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
     | ChooseRight : forall p_x2 x1 x2 v,
       t c a p_x2 x2 v -> t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
-  End Eval.
+  End Eval.*)
 End Choose.
