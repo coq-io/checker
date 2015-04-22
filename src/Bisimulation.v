@@ -15,7 +15,7 @@ Module ToChoose.
         v_f.
     Admitted.
 
-    Fixpoint to_choose {E A} {p : C.Last.Path.t} {x : C.t E A} {v : A}
+    (*Fixpoint to_choose {E A} {p : C.Last.Path.t} {x : C.t E A} {v : A}
       (H : C.Last.Eval.t p x v)
       : Choose.Last.Eval.t
         (Compile.Path.Last.to_choose p) (Compile.to_choose x) v.
@@ -47,6 +47,6 @@ Module ToChoose.
         + apply H.
         + apply H0.
       - 
-    Qed.
+    Qed.*)
   End Last.
 End ToChoose.
