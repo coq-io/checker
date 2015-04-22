@@ -1,10 +1,8 @@
 Require Import Coq.Lists.List.
 Require Import Io.All.
-Require Event.
 
 Import ListNotations.
 Local Open Scope type.
-Module Choose.
 Inductive t (E : Effect.t) (A : Type) : Type :=
 | Ret : A -> t E A
 | Call : forall c, (Effect.answer E c -> t E A) -> t E A
@@ -14,7 +12,7 @@ Arguments Call {E A} _ _.
 Arguments Choose {E A} _ _.
 
 Module LastStep.
-  Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Type :=
+  Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> A -> Prop :=
   | Ret : forall v,
     t (Choose.Ret v) v
   | ChooseLeft : forall (x1 x2 : Choose.t E A) (v : A),
@@ -26,26 +24,30 @@ Module LastStep.
 End LastStep.
 
 Module Step.
-  Inductive t {E : Effect.t} {A : Type} : Choose.t E A -> Type :=
-  | Call : forall c h (a : Effect.answer E c), t (Choose.Call c h)
-  | ChooseLeft : forall (x1 x2 : Choose.t E A),
-    t x1 ->
-    t (Choose.Choose x1 x2)
-  | ChooseRight : forall (x1 x2 : Choose.t E A),
-    t x2 ->
-    t (Choose.Choose x1 x2).
+  Inductive t {E : Effect.t} (c : Effect.command E) (A : Type) : Type :=
+  | Call : (Effect.answer E c -> Choose.t E A) -> Effect.answer E c -> t c A
+  | ChooseLeft : t c A -> Choose.t E A -> t c A
+  | ChooseRight : Choose.t E A -> t c A -> t c A.
 
-  Fixpoint eval {E A} {x : Choose.t E A} (H : t x) : Choose.t E A :=
-    match H with
-    | Call _ h a => h a
-    | ChooseLeft _ _ H_x1 => eval H_x1
-    | ChooseRight _ _ H_x2 => eval H_x2
+  Fixpoint start {E c A} (step : t c A) : Choose.t E A :=
+    match step with
+    | Call h _ => Choose.Call c h
+    | ChooseLeft step_x1 x2 => Choose.Choose (start step_x1) x2
+    | ChooseRight x1 step_x2 => Choose.Choose x1 (start step_x2)
     end.
 
-  Fixpoint event {E A} {x : Choose.t E A} (H : t x) : Event.t E :=
-    match H with
-    | Call c _ a => Event.New c a
-    | ChooseLeft _ _ H | ChooseRight _ _ H => event H
+  Fixpoint answer {E c A} (step : t c A) : Effect.answer E c :=
+    match step with
+    | Call _ a => a
+    | ChooseLeft step_x1 _ => answer step_x1
+    | ChooseRight _ step_x2 => answer step_x2
+    end.
+
+  Fixpoint eval {E c A} (step : t c A) : Choose.t E A :=
+    match step with
+    | Call h a => h a
+    | ChooseLeft step_x1 x2 => Choose.Choose (eval step_x1) x2
+    | ChooseRight x1 step_x2 => Choose.Choose x1 (eval step_x2)
     end.
 End Step.
 

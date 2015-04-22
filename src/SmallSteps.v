@@ -1,7 +1,6 @@
 Require Import Coq.Lists.List.
 Require Import Io.All.
 Require Choose.
-Require Event.
 
 Import ListNotations.
 Import C.Notations.
