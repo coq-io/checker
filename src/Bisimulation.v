@@ -15,6 +15,12 @@ Module ToChoose.
         v_f.
     Admitted.
 
+    Fixpoint join {E A B} {p_x x} {v_x : A} {p_y y} {v_y : B}
+      (s_x : Choose.Last.Eval.t p_x x v_x) (s_y : Choose.Last.Eval.t p_y y v_y)
+      : Choose.Last.Eval.t (E := E)
+        (Choose.Last.Path.bind p_x p_y) (Choose.join x y) (v_x, v_y).
+    Admitted.
+
     Fixpoint to_choose {E A} {p : C.Last.Path.t} {x : C.t E A} {v : A}
       (H : C.Last.Eval.t p x v)
       : Choose.Last.Eval.t
@@ -26,27 +32,9 @@ Module ToChoose.
         now apply to_choose.
       - apply Choose.Last.Eval.ChooseRight.
         now apply to_choose.
-      - induction p_x; simpl.
-        + refine (
-            match H in C.Last.Eval.t p x v_x return
-              match p with
-              | C.Last.Path.Ret =>
-                match x with
-                | C.Ret _ _ =>
-                  Choose.Last.Eval.t (Compile.Path.Last.to_choose p_y)
-  (Choose.join (Compile.to_choose x) (Compile.to_choose y)) (v_x, v_y)
-                | _ =>
-                  Choose.Last.Eval.t (Compile.Path.Last.to_choose p_y)
-    (Choose.join (Compile.to_choose x) (Compile.to_choose y)) (v_x, v_y)
-                end
-              | _ => True
-              end : Prop with
-            | C.Last.Eval.Ret _ _ => _
-            | _ => I
-            end).
-        + apply H.
-        + apply H0.
-      - 
+      - apply join.
+        + now apply to_choose.
+        + now apply to_choose.
     Qed.
   End Last.
 End ToChoose.
