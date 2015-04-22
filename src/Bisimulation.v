@@ -80,23 +80,47 @@ Module ToChoose.
   Fixpoint bind {E c a A B} {p_x : Choose.Path.t} {x x' f}
     (H : Choose.Eval.t (E := E) (A := A) c a p_x x x')
     : Choose.Eval.t (A := B) c a p_x (Choose.bind x f) (Choose.bind x' f).
-  Admitted.
+    destruct H; simpl.
+    - apply (Choose.Eval.Call c a).
+    - apply Choose.Eval.ChooseLeft.
+      now apply bind.
+    - apply Choose.Eval.ChooseRight.
+      now apply bind.
+  Qed.
 
   Fixpoint bind_done {E c a A B} {p_x x v p_f f y}
     (H_x : Choose.Last.Eval.t (E := E) (A := A) p_x x v)
     (H_f : Choose.Eval.t (E := E) (A := B) c a p_f (f v) y)
     : Choose.Eval.t c a (Choose.Path.bind p_x p_f) (Choose.bind x f) y.
-  Admitted.
+    destruct H_x; simpl.
+    - exact H_f.
+    - apply Choose.Eval.ChooseLeft.
+      now apply bind_done with (v := v).
+    - apply Choose.Eval.ChooseRight.
+      now apply bind_done with (v := v).
+  Qed.
 
   Fixpoint join_left {E c a A B} {p_x} {x x' : Choose.t E A} {y : Choose.t E B}
     (H : Choose.Eval.t c a p_x x x')
     : Choose.Eval.t c a p_x (Choose.join_left x y) (Choose.join x' y).
-  Admitted.
+    destruct H; simpl.
+    - apply (Choose.Eval.Call c a).
+    - apply Choose.Eval.ChooseLeft.
+      now apply join_left.
+    - apply Choose.Eval.ChooseRight.
+      now apply join_left.
+  Qed.
 
   Fixpoint join_right {E c a A B} {x : Choose.t E B} {p_y}
     {y y' : Choose.t E A} (H : Choose.Eval.t c a p_y y y')
     : Choose.Eval.t c a p_y (Choose.join_right x y) (Choose.join x y').
-  Admitted.
+    destruct H; simpl.
+    - apply (Choose.Eval.Call c a).
+    - apply Choose.Eval.ChooseLeft.
+      now apply join_right.
+    - apply Choose.Eval.ChooseRight.
+      now apply join_right.
+  Qed.
 
   Fixpoint to_choose {E c a A} {p : C.Path.t} {x x' : C.t E A}
     (H : C.Eval.t c a p x x')
