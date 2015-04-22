@@ -14,17 +14,17 @@ Module Last.
     | Ret : t
     | ChooseLeft : t -> t
     | ChooseRight : t -> t.
-
-    Module Eval.
-      Inductive t {E : Effect.t} {A : Type}
-        : Path.t -> Choose.t E A -> A -> Prop :=
-      | Ret : forall v, t Path.Ret (Choose.Ret v) v
-      | ChooseLeft : forall p_x1 x1 x2 v,
-        t p_x1 x1 v -> t (ChooseLeft p_x1) (Choose.Choose x1 x2) v
-      | ChooseRight : forall p_x2 x1 x2 v,
-        t p_x2 x2 v -> t (ChooseRight p_x2) (Choose.Choose x1 x2) v.
-    End Eval.
   End Path.
+
+  Module Eval.
+    Inductive t {E : Effect.t} {A : Type}
+      : Path.t -> Choose.t E A -> A -> Prop :=
+    | Ret : forall v, t Path.Ret (Choose.Ret v) v
+    | ChooseLeft : forall p_x1 x1 x2 v,
+      t p_x1 x1 v -> t (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
+    | ChooseRight : forall p_x2 x1 x2 v,
+      t p_x2 x2 v -> t (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
+    End Eval.
 End Last.
 
 Module Path.
@@ -32,17 +32,17 @@ Module Path.
   | Call : t
   | ChooseLeft : t -> t
   | ChooseRight : t -> t.
-
-  Module Eval.
-    Inductive t {E : Effect.t} {c : Effect.command E} (a : Effect.answer E c)
-      {A : Type} : Path.t -> Choose.t E A -> Choose.t E A -> Prop :=
-    | Call : forall h, t a Path.Call (Choose.Call c h) (h a)
-    | ChooseLeft : forall p_x1 x1 x2 v,
-      t a p_x1 x1 v -> t a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
-    | ChooseRight : forall p_x2 x1 x2 v,
-      t a p_x2 x2 v -> t a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
-  End Eval.
 End Path.
+
+Module Eval.
+  Inductive t {E : Effect.t} {c : Effect.command E} (a : Effect.answer E c)
+    {A : Type} : Path.t -> Choose.t E A -> Choose.t E A -> Prop :=
+  | Call : forall h, t a Path.Call (Choose.Call c h) (h a)
+  | ChooseLeft : forall p_x1 x1 x2 v,
+    t a p_x1 x1 v -> t a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
+  | ChooseRight : forall p_x2 x1 x2 v,
+    t a p_x2 x2 v -> t a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) v.
+End Eval.
 
 Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   match x with

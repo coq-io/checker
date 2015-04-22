@@ -9,26 +9,60 @@ Module Last.
     | ChooseLeft : t -> t
     | ChooseRight : t -> t
     | Join : t -> t -> t.
-
-    Module Eval.
-      Inductive t {E : Effect.t}
-        : forall {A : Type}, Path.t -> C.t E A -> A -> Prop :=
-      | Ret : forall A (v : A), t Path.Ret (C.Ret _ v) v
-      | Let : forall A B p_x x (v_x : A) p_f f (v_f : B),
-        t p_x x v_x -> t p_f (f v_x) v_f ->
-        t (Path.Let p_x p_f) (C.Let _ _ x f) v_f
-      | ChooseLeft : forall A p_x1 x1 (v_x1 : A) x2,
-        t p_x1 x1 v_x1 -> t (Path.ChooseLeft p_x1) (C.Choose _ x1 x2) v_x1
-      | ChooseRight : forall A x1 p_x2 x2 (v_x2 : A),
-        t p_x2 x2 v_x2 -> t (Path.ChooseRight p_x2) (C.Choose _ x1 x2) v_x2
-      | Join : forall A B p_x x (v_x : A) p_y y (v_y : B),
-        t p_x x v_x -> t p_y y v_y ->
-        t (Path.Join p_x p_y) (C.Join _ _ x y) (v_x, v_y).
-    End Eval.
   End Path.
+
+  Module Eval.
+    Inductive t {E : Effect.t}
+      : forall {A : Type}, Path.t -> C.t E A -> A -> Prop :=
+    | Ret : forall A (v : A), t Path.Ret (C.Ret E v) v
+    | Let : forall A B p_x x v_x p_f f v_f,
+      t p_x x v_x -> t p_f (f v_x) v_f ->
+      t (Path.Let p_x p_f) (C.Let A B x f) v_f
+    | ChooseLeft : forall A p_x1 x1 v_x1 x2,
+      t p_x1 x1 v_x1 -> t (Path.ChooseLeft p_x1) (C.Choose A x1 x2) v_x1
+    | ChooseRight : forall A x1 p_x2 x2 v_x2,
+      t p_x2 x2 v_x2 -> t (Path.ChooseRight p_x2) (C.Choose A x1 x2) v_x2
+    | Join : forall A B p_x x v_x p_y y v_y,
+      t p_x x v_x -> t p_y y v_y ->
+      t (Path.Join p_x p_y) (C.Join A B x y) (v_x, v_y).
+  End Eval.
 End Last.
 
-Module Step.
+Module Path.
+  Inductive t : Set :=
+  | Call : t
+  | Let : t -> t
+  | LetDone : Last.Path.t -> t -> t
+  | ChooseLeft : t -> t
+  | ChooseRight : t -> t
+  | JoinLeft : t -> t
+  | JoinRight : t -> t.
+End Path.
+
+Module Eval.
+  Inductive t {E : Effect.t} {c : Effect.command E} (a : Effect.answer E c)
+    : forall {A : Type}, Path.t -> C.t E A -> C.t E A -> Prop :=
+  | Call : t a Path.Call (C.Call c) (C.Ret E a)
+  | Let : forall A B p_x x x' f,
+    t a p_x x x' -> t a (Path.Let p_x) (C.Let A B x f) (C.Let A B x' f)
+  | LetDone : forall A B p_x x v_x p_f f f',
+    Last.Eval.t p_x x v_x -> t a p_f (f v_x) f' ->
+    t a (Path.LetDone p_x p_f) (C.Let A B x f) f'
+  | ChooseLeft : forall A p_x1 x1 x1' x2,
+    t a p_x1 x1 x1' ->
+    t a (Path.ChooseLeft p_x1) (C.Choose A x1 x2) (C.Choose A x1' x2)
+  | ChooseRight : forall A x1 p_x2 x2 x2',
+    t a p_x2 x2 x2' ->
+    t a (Path.ChooseRight p_x2) (C.Choose A x1 x2) (C.Choose A x1 x2')
+  | JoinLeft : forall A B p_x x x' y,
+    t a p_x x x' ->
+    t a (Path.JoinLeft p_x) (C.Join A B x y) (C.Join A B x' y)
+  | JoinRight : forall A B x p_y y y',
+    t a p_y y y' ->
+    t a (Path.JoinRight p_y) (C.Join A B x y) (C.Join A B x y').
+End Eval.
+
+(*Module Step.
   Inductive t {E : Effect.t} (c : Effect.command E) : Type -> Type :=
   | Call : Effect.answer E c -> t c (Effect.answer E c)
   | Let : forall A B,
@@ -85,4 +119,4 @@ Fixpoint compile {E A} (x : C.t E A) : Choose.t E A :=
   | C.Let _ _ x f => Choose.bind (compile x) (fun x => compile (f x))
   | C.Choose _ x1 x2 => Choose.Choose (compile x1) (compile x2)
   | C.Join _ _ x y => Choose.join (compile x) (compile y)
-  end.
+  end.*)
