@@ -25,6 +25,50 @@ Module Path.
       | C.Last.Path.Join p_x p_y =>
         Choose.Last.Path.join (to_choose p_x) (to_choose p_y)
       end.
+
+    Fixpoint to_c {E A} (x : C.t E A) (p : Choose.Last.Path.t)
+      : option (C.Last.Path.t * A * Choose.Last.Path.t) :=
+      match x with
+      | C.Ret _ v => Some (C.Last.Path.Ret, v, Choose.Last.Path.Ret)
+      | C.Call _ => None
+      | C.Let _ _ x f =>
+        match to_c x p with
+        | None => None
+        | Some (p_x, v_x, p) =>
+          match to_c (f v_x) p with
+          | None => None
+          | Some (p_f, v_y, p) => Some (C.Last.Path.Let p_x p_f, v_y, p)
+          end
+        end
+      | C.Choose _ x1 x2 =>
+        match p with
+        | Choose.Last.Path.Ret => None
+        | Choose.Last.Path.ChooseLeft p =>
+          match to_c x1 p with
+          | None => None
+          | Some (p_x1, v_x1, p) => Some (C.Last.Path.ChooseLeft p_x1, v_x1, p)
+          end
+        | Choose.Last.Path.ChooseRight p =>
+          match to_c x1 p with
+          | None => None
+          | Some (p_x1, v_x1, p) => Some (C.Last.Path.ChooseRight p_x1, v_x1, p)
+          end
+        end
+      | C.Join _ _ x y =>
+        match p with
+        | Choose.Last.Path.ChooseLeft p =>
+          match to_c x p with
+          | None => None
+          | Some (p_x, v_x, p) =>
+            match to_c y p with
+            | None => None
+            | Some (p_y, v_y, p) =>
+              Some (C.Last.Path.Join p_x p_y, (v_x, v_y), p)
+            end
+          end
+        | _ => None
+        end
+      end.
   End Last.
 
   Fixpoint to_choose (p : C.Path.t) : Choose.Path.t :=
