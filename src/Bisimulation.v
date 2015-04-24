@@ -185,85 +185,64 @@ Module ToC.
 
     Fixpoint to_c {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
-      : match Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) with
-        | Some (p'_x, v', p'_k) =>
-          v' = v /\ p'_k = p_k /\ C.Last.Eval.t p'_x x v
-        | None => False
-        end.
+      : exists p'_x,
+          Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) =
+            Some (p'_x, v, p_k) /\
+          C.Last.Eval.t p'_x x v.
       destruct x; simpl in *.
       - inversion_clear H.
         simpl.
-        split; trivial.
-        split; trivial.
-        apply C.Last.Eval.Ret.
+        exists C.Last.Path.Ret.
+        split.
+        + reflexivity.
+        + apply C.Last.Eval.Ret.
       - inversion H.
       - destruct (bind H) as [v_x [p_x_x [p_x_f [H_p_x [H_p_x_x H_p_x_f]]]]].
-        assert (H' := to_c _ _ _ _ _ (Choose.Last.Path.bind p_x_f p_k) H_p_x_x).
-        rewrite Choose.Last.Path.bind_assoc in H'.
-        rewrite H_p_x in H'.
-        destruct (Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k)).
-        + destruct p as [[p'_x v'] p'_k].
-          destruct H' as [H_v' [H_p'_k H_x]].
-          rewrite H_p'_k.
-          rewrite H_v'.
-          assert (H' := to_c _ _ (t v_x) v p_x_f p_k H_p_x_f).
-          destruct (Compile.Path.Last.to_c (t v_x)
-            (Choose.Last.Path.bind p_x_f p_k)).
-          * destruct p as [[p'_x' v''] p'_k'].
-            destruct H' as [H_v'' [H_p''_k H_y]].
-            split; trivial.
-            split; trivial.
-            now apply (C.Last.Eval.Let _ _ _ _ v_x).
-          * destruct H'.
-        + destruct H'.
+        rewrite <- H_p_x.
+        destruct (to_c _ _ _ _ _ (Choose.Last.Path.bind p_x_f p_k) H_p_x_x)
+          as [p'_x [H_x_x]].
+        rewrite <- Choose.Last.Path.bind_assoc.
+        destruct (to_c _ _ _ _ _ p_k H_p_x_f) as [p'_f [H_x_f]].
+        rewrite H_x_x.
+        rewrite H_x_f.
+        eexists.
+        split.
+        + reflexivity.
+        + now apply (C.Last.Eval.Let _ _ _ _ v_x).
       - destruct p_x as [|p_x | p_x].
         + destruct (choose H).
         + assert (H_x1 := choose H).
           simpl in *.
-          assert (H'_x1 := to_c _ _ _ _ _ p_k H_x1).
-          destruct (Compile.Path.Last.to_c x1 (Choose.Last.Path.bind p_x p_k)).
-          * destruct p as [[p'_x v'] p'_k].
-            destruct H'_x1 as [H_v' [H_p'_k H1]].
-            split; trivial.
-            split; trivial.
-            now apply C.Last.Eval.ChooseLeft.
-          * destruct H'_x1.
+          destruct (to_c _ _ _ _ _ p_k H_x1) as [p'_x1 [H1]].
+          rewrite H1.
+          eexists.
+          split.
+          * reflexivity.
+          * now apply C.Last.Eval.ChooseLeft.
         + assert (H_x2 := choose H).
           simpl in *.
-          assert (H'_x2 := to_c _ _ _ _ _ p_k H_x2).
-          destruct (Compile.Path.Last.to_c x2 (Choose.Last.Path.bind p_x p_k)).
-          * destruct p as [[p'_x v'] p'_k].
-            destruct H'_x2 as [H_v' [H_p'_k H2]].
-            split; trivial.
-            split; trivial.
-            now apply C.Last.Eval.ChooseRight.
-          * destruct H'_x2.
+          destruct (to_c _ _ _ _ _ p_k H_x2) as [p'_x2 [H2]].
+          rewrite H2.
+          eexists.
+          split.
+          * reflexivity.
+          * now apply C.Last.Eval.ChooseRight.
       - assert (H_join := join H).
-        destruct p_x as [|p|].
-        + destruct H_join.
-        + destruct v as [v_x v_y].
-          destruct (join_left H_join) as [p_x [p_y [H_p [H_p_x H_p_y]]]].
-          simpl.
-          rewrite H_p.
-          rewrite <- Choose.Last.Path.bind_assoc.
-          assert (H'_p_x := to_c _ _ _ _ _
-            (Choose.Last.Path.bind p_y p_k) H_p_x).
-          destruct (Compile.Path.Last.to_c x1
-            (Choose.Last.Path.bind p_x (Choose.Last.Path.bind p_y p_k)));
-            trivial.
-          destruct p0 as [[p'_x v'] p'_k].
-          destruct H'_p_x as [H_v_x [H_p'_k]].
-          rewrite H_p'_k.
-          assert (H'_p_y := to_c _ _ _ _ _ p_k H_p_y).
-          destruct (Compile.Path.Last.to_c x2 (Choose.Last.Path.bind p_y p_k));
-            trivial.
-          destruct p0 as [[p'_y v''] p''_k].
-          destruct H'_p_y as [H_v_y [H_p''_k]].
-          rewrite H_v_x; rewrite H_v_y.
-          split; trivial.
-          split; trivial.
-          now apply C.Last.Eval.Join.
-        + destruct H_join.
+        destruct p_x as [|p|]; [destruct H_join | | destruct H_join].
+        destruct v as [v_x v_y].
+        destruct (join_left H_join) as [p_x [p_y [H_p [H_p_x H_p_y]]]].
+        simpl.
+        rewrite H_p.
+        rewrite <- Choose.Last.Path.bind_assoc.
+        destruct (to_c _ _ _ _ _ (Choose.Last.Path.bind p_y p_k) H_p_x) as
+          [p'_x1 [H_x1]].
+        rewrite H_x1.
+        destruct (to_c _ _ _ _ _ p_k H_p_y) as [p'_x2 [H_x2]].
+        rewrite H_x2.
+        eexists.
+        split.
+        + reflexivity.
+        + now apply C.Last.Eval.Join.
     Qed.
   End Last.
 End ToC.
