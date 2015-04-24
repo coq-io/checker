@@ -293,8 +293,8 @@ Module ToC.
     Fixpoint to_c {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
       : exists p'_x,
-          Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) =
-            Some (p'_x, v, p_k) /\
+          Compile.Path.to_c x (Choose.Last.Path.bind p_x p_k) =
+            inl (p'_x, v, p_k) /\
           C.Last.Eval.t p'_x x v.
       destruct x; simpl in *.
       - inversion_clear H.
