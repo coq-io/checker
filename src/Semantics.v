@@ -65,36 +65,36 @@ Module C.
 End C.
 
 Module Choose.
+  Module Path.
+    Inductive t : Set :=
+    | Done : t
+    | ChooseLeft : t -> t
+    | ChooseRight : t -> t.
+
+    Fixpoint bind (p_x p_f : t) : t :=
+      match p_x with
+      | Done => p_f
+      | ChooseLeft p_x => ChooseLeft (bind p_x p_f)
+      | ChooseRight p_x => ChooseRight (bind p_x p_f)
+      end.
+
+    Fixpoint bind_assoc (p_x p_y p_z : t)
+      : bind p_x (bind p_y p_z) = bind (bind p_x p_y) p_z.
+      destruct p_x; simpl.
+      - reflexivity.
+      - now rewrite bind_assoc.
+      - now rewrite bind_assoc.
+    Qed.
+
+    Definition join (p_x p_f : t) : t :=
+      ChooseLeft (bind p_x p_f).
+  End Path.
+
   Module Last.
-    Module Path.
-      Inductive t : Set :=
-      | Ret : t
-      | ChooseLeft : t -> t
-      | ChooseRight : t -> t.
-
-      Fixpoint bind (p_x p_f : t) : t :=
-        match p_x with
-        | Ret => p_f
-        | ChooseLeft p_x => ChooseLeft (bind p_x p_f)
-        | ChooseRight p_x => ChooseRight (bind p_x p_f)
-        end.
-
-      Fixpoint bind_assoc (p_x p_y p_z : t)
-        : bind p_x (bind p_y p_z) = bind (bind p_x p_y) p_z.
-        destruct p_x; simpl.
-        - reflexivity.
-        - now rewrite bind_assoc.
-        - now rewrite bind_assoc.
-      Qed.
-
-      Definition join (p_x p_f : t) : t :=
-        ChooseLeft (bind p_x p_f).
-    End Path.
-
     Module Eval.
       Inductive t {E : Effect.t} {A : Type}
         : Path.t -> Choose.t E A -> A -> Prop :=
-      | Ret : forall v, t Path.Ret (Choose.Ret v) v
+      | Ret : forall v, t Path.Done (Choose.Ret v) v
       | ChooseLeft : forall p_x1 x1 x2 v,
         t p_x1 x1 v -> t (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) v
       | ChooseRight : forall p_x2 x1 x2 v,
@@ -102,24 +102,10 @@ Module Choose.
       End Eval.
   End Last.
 
-  Module Path.
-    Inductive t : Set :=
-    | Call : t
-    | ChooseLeft : t -> t
-    | ChooseRight : t -> t.
-
-    Fixpoint bind (p_x : Last.Path.t) (p_f : t) : t :=
-      match p_x with
-      | Last.Path.Ret => p_f
-      | Last.Path.ChooseLeft p_x => ChooseLeft (bind p_x p_f)
-      | Last.Path.ChooseRight p_x => ChooseRight (bind p_x p_f)
-      end.
-  End Path.
-
   Module Eval.
     Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
       {A : Type} : Path.t -> Choose.t E A -> Choose.t E A -> Prop :=
-    | Call : forall h, t c a Path.Call (Choose.Call c h) (h a)
+    | Call : forall h, t c a Path.Done (Choose.Call c h) (h a)
     | ChooseLeft : forall p_x1 x1 x2 x1',
       t c a p_x1 x1 x1' ->
       t c a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) x1'

@@ -19,7 +19,7 @@ Module ToChoose.
     Fixpoint bind {E A B} {p_x x} {v_x : A} {p_f f} {v_f : B}
       (H_x : Choose.Last.Eval.t p_x x v_x)
       (H_f : Choose.Last.Eval.t p_f (f v_x) v_f)
-      : Choose.Last.Eval.t (E := E) (Choose.Last.Path.bind p_x p_f)
+      : Choose.Last.Eval.t (E := E) (Choose.Path.bind p_x p_f)
         (Choose.bind x f) v_f.
       destruct H_x; simpl.
       - exact H_f.
@@ -36,7 +36,7 @@ Module ToChoose.
     Fixpoint join_left {E A B} {p_x x} {v_x : A} {p_y y} {v_y : B}
       (H_x : Choose.Last.Eval.t p_x x v_x) (H_y : Choose.Last.Eval.t p_y y v_y)
       : Choose.Last.Eval.t (E := E)
-        (Choose.Last.Path.bind p_x p_y) (Choose.join_left x y) (v_x, v_y).
+        (Choose.Path.bind p_x p_y) (Choose.join_left x y) (v_x, v_y).
       destruct H_x; unfold Choose.join_left; simpl.
       - now apply map.
       - apply Choose.Last.Eval.ChooseLeft.
@@ -48,7 +48,7 @@ Module ToChoose.
     Definition join {E A B} {p_x x} {v_x : A} {p_y y} {v_y : B}
       (H_x : Choose.Last.Eval.t p_x x v_x) (H_y : Choose.Last.Eval.t p_y y v_y)
       : Choose.Last.Eval.t (E := E)
-        (Choose.Last.Path.join p_x p_y) (Choose.join x y) (v_x, v_y).
+        (Choose.Path.join p_x p_y) (Choose.join x y) (v_x, v_y).
       apply Choose.Last.Eval.ChooseLeft.
       destruct H_x; simpl.
       - now apply map.
@@ -148,7 +148,7 @@ End ToChoose.
 
 Module ToC.
   Module Last.
-    Fixpoint map {E A B} {p : Choose.Last.Path.t} {x : Choose.t E A}
+    Fixpoint map {E A B} {p : Choose.Path.t} {x : Choose.t E A}
       {f : A -> B} {v : B} (H : Choose.Last.Eval.t p (Choose.map x f) v)
       : exists v_x, Choose.Last.Eval.t p x v_x /\ v = f v_x.
       destruct x; simpl in *.
@@ -174,13 +174,13 @@ Module ToC.
     Qed.
 
     Fixpoint bind {E A B} {x : Choose.t E A} {f : A -> Choose.t E B} {v_y : B}
-      {p : Choose.Last.Path.t} (H : Choose.Last.Eval.t p (Choose.bind x f) v_y)
+      {p : Choose.Path.t} (H : Choose.Last.Eval.t p (Choose.bind x f) v_y)
       : exists v_x, exists p_x, exists p_f,
-        Choose.Last.Path.bind p_x p_f = p /\
+        Choose.Path.bind p_x p_f = p /\
         Choose.Last.Eval.t p_x x v_x /\
         Choose.Last.Eval.t p_f (f v_x) v_y.
       destruct x; simpl in *.
-      - exists a; exists Choose.Last.Path.Ret; exists p.
+      - exists a; exists Choose.Path.Done; exists p.
         split.
         + reflexivity.
         + split.
@@ -189,14 +189,14 @@ Module ToC.
       - inversion H.
       - inversion_clear H as [| p1 x1' x2' v' H1 | p2 x1' x2' v' H2].
         + destruct (bind _ _ _ _ _ _ _ H1) as [v_x [p_x [p_f [H_p1 [H_x1]]]]].
-          exists v_x; exists (Choose.Last.Path.ChooseLeft p_x); exists p_f.
+          exists v_x; exists (Choose.Path.ChooseLeft p_x); exists p_f.
           simpl.
           rewrite H_p1.
           split; trivial.
           split; trivial.
           now apply Choose.Last.Eval.ChooseLeft.
         + destruct (bind _ _ _ _ _ _ _ H2) as [v_x [p_x [p_f [H_p2 [H_x2]]]]].
-          exists v_x; exists (Choose.Last.Path.ChooseRight p_x); exists p_f.
+          exists v_x; exists (Choose.Path.ChooseRight p_x); exists p_f.
           simpl.
           rewrite H_p2.
           split; trivial.
@@ -204,37 +204,37 @@ Module ToC.
           now apply Choose.Last.Eval.ChooseRight.
     Qed.
 
-    Fixpoint choose {E A} {p_x : Choose.Last.Path.t} {x1 x2 : Choose.t E A}
+    Fixpoint choose {E A} {p_x : Choose.Path.t} {x1 x2 : Choose.t E A}
       {v : A} (H : Choose.Last.Eval.t p_x (Choose.Choose x1 x2) v)
       : match p_x with
-        | Choose.Last.Path.Ret => False
-        | Choose.Last.Path.ChooseLeft p_x => Choose.Last.Eval.t p_x x1 v
-        | Choose.Last.Path.ChooseRight p_x => Choose.Last.Eval.t p_x x2 v
+        | Choose.Path.Done => False
+        | Choose.Path.ChooseLeft p_x => Choose.Last.Eval.t p_x x1 v
+        | Choose.Path.ChooseRight p_x => Choose.Last.Eval.t p_x x2 v
         end.
       now inversion H.
     Qed.
 
-    Fixpoint join {E A B} {p : Choose.Last.Path.t} {x : Choose.t E A}
+    Fixpoint join {E A B} {p : Choose.Path.t} {x : Choose.t E A}
       {y : Choose.t E B} {v} (H : Choose.Last.Eval.t p (Choose.join x y) v)
       : match p with
-        | Choose.Last.Path.Ret => False
-        | Choose.Last.Path.ChooseLeft p =>
+        | Choose.Path.Done => False
+        | Choose.Path.ChooseLeft p =>
           Choose.Last.Eval.t p (Choose.join_left x y) v
-        | Choose.Last.Path.ChooseRight p =>
+        | Choose.Path.ChooseRight p =>
           Choose.Last.Eval.t p (Choose.join_right x y) v
         end.
       now inversion_clear H.
     Qed.
 
-    Fixpoint join_left {E A B} {p : Choose.Last.Path.t} {x : Choose.t E A}
+    Fixpoint join_left {E A B} {p : Choose.Path.t} {x : Choose.t E A}
       {y : Choose.t E B} {v_x : A} {v_y : B}
       (H : Choose.Last.Eval.t p (Choose.join_left x y) (v_x, v_y))
       : exists p_x, exists p_y,
-        p = Choose.Last.Path.bind p_x p_y /\
+        p = Choose.Path.bind p_x p_y /\
         Choose.Last.Eval.t p_x x v_x /\
         Choose.Last.Eval.t p_y y v_y.
       destruct x; unfold Choose.join_left in *; simpl in *.
-      - exists Choose.Last.Path.Ret; exists p.
+      - exists Choose.Path.Done; exists p.
         split; trivial.
         destruct (map H) as [v'_y [H_y H_eq]].
         replace a with v_x by congruence.
@@ -245,28 +245,28 @@ Module ToC.
       - inversion H.
       - inversion_clear H as [| p1 x1' x2' v' H1 | p2 x1' x2' v' H2].
         + destruct (join_left _ _ _ _ _ _ _ _ H1) as [p_x1 [p_y [H_p1 []]]].
-          exists (Choose.Last.Path.ChooseLeft p_x1); exists p_y.
+          exists (Choose.Path.ChooseLeft p_x1); exists p_y.
           rewrite H_p1.
           split; trivial.
           split; trivial.
           now apply Choose.Last.Eval.ChooseLeft.
         + destruct (join_left _ _ _ _ _ _ _ _ H2) as [p_x2 [p_y [H_p2 []]]].
-          exists (Choose.Last.Path.ChooseRight p_x2); exists p_y.
+          exists (Choose.Path.ChooseRight p_x2); exists p_y.
           rewrite H_p2.
           split; trivial.
           split; trivial.
           now apply Choose.Last.Eval.ChooseRight.
     Qed.
 
-    Fixpoint join_right {E A B} {p : Choose.Last.Path.t} {x : Choose.t E A}
+    Fixpoint join_right {E A B} {p : Choose.Path.t} {x : Choose.t E A}
       {y : Choose.t E B} {v_x : A} {v_y : B}
       (H : Choose.Last.Eval.t p (Choose.join_right x y) (v_x, v_y))
       : exists p_y, exists p_x,
-        p = Choose.Last.Path.bind p_y p_x /\
+        p = Choose.Path.bind p_y p_x /\
         Choose.Last.Eval.t p_x x v_x /\
         Choose.Last.Eval.t p_y y v_y.
       destruct y; simpl in *.
-      - exists Choose.Last.Path.Ret; exists p.
+      - exists Choose.Path.Done; exists p.
         split; trivial.
         destruct (map H) as [v'_x [H_x H_eq]].
         replace b with v_y by congruence.
@@ -277,23 +277,23 @@ Module ToC.
       - inversion H.
       - inversion_clear H as [| p1 x1' x2' v' H1 | p2 x1' x2' v' H2].
         + destruct (join_right _ _ _ _ _ _ _ _ H1) as [p_y1 [p_x [H_p1 []]]].
-          exists (Choose.Last.Path.ChooseLeft p_y1); exists p_x.
+          exists (Choose.Path.ChooseLeft p_y1); exists p_x.
           rewrite H_p1.
           split; trivial.
           split; trivial.
           now apply Choose.Last.Eval.ChooseLeft.
         + destruct (join_right _ _ _ _ _ _ _ _ H2) as [p_y2 [p_x [H_p2 []]]].
-          exists (Choose.Last.Path.ChooseRight p_y2); exists p_x.
+          exists (Choose.Path.ChooseRight p_y2); exists p_x.
           rewrite H_p2.
           split; trivial.
           split; trivial.
           now apply Choose.Last.Eval.ChooseRight.
     Qed.
 
-    Fixpoint to_c {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
+    Fixpoint to_c {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Path.t}
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
       : exists p'_x,
-          Compile.Path.to_c x (Choose.Last.Path.bind p_x p_k) =
+          Compile.Path.to_c x (Choose.Path.bind p_x p_k) =
             inl (p'_x, v, p_k) /\
           C.Last.Eval.t p'_x x v.
       destruct x; simpl in *.
@@ -306,9 +306,9 @@ Module ToC.
       - inversion H.
       - destruct (bind H) as [v_x [p_x_x [p_x_f [H_p_x [H_p_x_x H_p_x_f]]]]].
         rewrite <- H_p_x.
-        destruct (to_c _ _ _ _ _ (Choose.Last.Path.bind p_x_f p_k) H_p_x_x)
+        destruct (to_c _ _ _ _ _ (Choose.Path.bind p_x_f p_k) H_p_x_x)
           as [p'_x [H_x_x]].
-        rewrite <- Choose.Last.Path.bind_assoc.
+        rewrite <- Choose.Path.bind_assoc.
         destruct (to_c _ _ _ _ _ p_k H_p_x_f) as [p'_f [H_x_f]].
         rewrite H_x_x.
         rewrite H_x_f.
@@ -341,8 +341,8 @@ Module ToC.
         + destruct (join_left H_join) as [p_x [p_y [H_p [H_p_x H_p_y]]]].
           simpl.
           rewrite H_p.
-          rewrite <- Choose.Last.Path.bind_assoc.
-          destruct (to_c _ _ _ _ _ (Choose.Last.Path.bind p_y p_k) H_p_x) as
+          rewrite <- Choose.Path.bind_assoc.
+          destruct (to_c _ _ _ _ _ (Choose.Path.bind p_y p_k) H_p_x) as
             [p'_x1 [H_x1]].
           rewrite H_x1.
           destruct (to_c _ _ _ _ _ p_k H_p_y) as [p'_x2 [H_x2]].
@@ -354,8 +354,8 @@ Module ToC.
         + destruct (join_right H_join) as [p_y [p_x' [H_p [H_p_x H_p_y]]]].
           simpl.
           rewrite H_p.
-          rewrite <- Choose.Last.Path.bind_assoc.
-          destruct (to_c _ _ _ _ _ (Choose.Last.Path.bind p_x' p_k) H_p_y) as
+          rewrite <- Choose.Path.bind_assoc.
+          destruct (to_c _ _ _ _ _ (Choose.Path.bind p_x' p_k) H_p_y) as
             [p'_x1 [H_x1]].
           rewrite H_x1.
           destruct (to_c _ _ _ _ _ p_k H_p_x) as [p'_x2 [H_x2]].
@@ -366,4 +366,11 @@ Module ToC.
           * now apply C.Last.Eval.Join.
     Qed.
   End Last.
+
+  Fixpoint to_c {E c a A} {x : C.t E A} {x' : Choose.t E A} {p : Choose.Path.t}
+    (H : Choose.Eval.t c a p (Compile.to_choose x) x')
+    : exists p', exists x'',
+        Compile.Path.to_c x p = inr p' /\
+        C.Eval.t c a p' x x''.
+  Admitted.
 End ToC.
