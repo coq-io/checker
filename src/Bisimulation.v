@@ -183,7 +183,7 @@ Module ToC.
         Choose.Last.Eval.t p_y y v_y.
     Admitted.
 
-    Fixpoint aux {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
+    Fixpoint to_c {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
       : match Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) with
         | Some (p'_x, v', p'_k) =>
@@ -198,7 +198,7 @@ Module ToC.
         apply C.Last.Eval.Ret.
       - inversion H.
       - destruct (bind H) as [v_x [p_x_x [p_x_f [H_p_x [H_p_x_x H_p_x_f]]]]].
-        assert (H' := aux _ _ x v_x p_x_x (Choose.Last.Path.bind p_x_f p_k) H_p_x_x).
+        assert (H' := to_c _ _ _ _ _ (Choose.Last.Path.bind p_x_f p_k) H_p_x_x).
         rewrite Choose.Last.Path.bind_assoc in H'.
         rewrite H_p_x in H'.
         destruct (Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k)).
@@ -206,8 +206,9 @@ Module ToC.
           destruct H' as [H_v' [H_p'_k H_x]].
           rewrite H_p'_k.
           rewrite <- H_v'.
-          assert (H' := aux _ _ (t v_x) v p_x_f p_k H_p_x_f).
-          destruct (Compile.Path.Last.to_c (t v_x) (Choose.Last.Path.bind p_x_f p_k)).
+          assert (H' := to_c _ _ (t v_x) v p_x_f p_k H_p_x_f).
+          destruct (Compile.Path.Last.to_c (t v_x)
+            (Choose.Last.Path.bind p_x_f p_k)).
           * destruct p as [[p'_x' v''] p'_k'].
             destruct H' as [H_v'' [H_p''_k H_y]].
             split; trivial.
@@ -219,7 +220,7 @@ Module ToC.
         + destruct (choose H).
         + assert (H_x1 := choose H).
           simpl in *.
-          assert (H'_x1 := aux _ _ _ _ _ p_k H_x1).
+          assert (H'_x1 := to_c _ _ _ _ _ p_k H_x1).
           destruct (Compile.Path.Last.to_c x1 (Choose.Last.Path.bind p_x p_k)).
           * destruct p as [[p'_x v'] p'_k].
             destruct H'_x1 as [H_v' [H_p'_k H1]].
@@ -229,7 +230,7 @@ Module ToC.
           * destruct H'_x1.
         + assert (H_x2 := choose H).
           simpl in *.
-          assert (H'_x2 := aux _ _ _ _ _ p_k H_x2).
+          assert (H'_x2 := to_c _ _ _ _ _ p_k H_x2).
           destruct (Compile.Path.Last.to_c x2 (Choose.Last.Path.bind p_x p_k)).
           * destruct p as [[p'_x v'] p'_k].
             destruct H'_x2 as [H_v' [H_p'_k H2]].
@@ -245,14 +246,15 @@ Module ToC.
           simpl.
           rewrite H_p.
           rewrite <- Choose.Last.Path.bind_assoc.
-          assert (H'_p_x := aux _ _ _ _ _ (Choose.Last.Path.bind p_y p_k) H_p_x).
+          assert (H'_p_x := to_c _ _ _ _ _
+            (Choose.Last.Path.bind p_y p_k) H_p_x).
           destruct (Compile.Path.Last.to_c x1
             (Choose.Last.Path.bind p_x (Choose.Last.Path.bind p_y p_k)));
             trivial.
           destruct p0 as [[p'_x v'] p'_k].
           destruct H'_p_x as [H_v_x [H_p'_k]].
           rewrite H_p'_k.
-          assert (H'_p_y := aux _ _ _ _ _ p_k H_p_y).
+          assert (H'_p_y := to_c _ _ _ _ _ p_k H_p_y).
           destruct (Compile.Path.Last.to_c x2 (Choose.Last.Path.bind p_y p_k));
             trivial.
           destruct p0 as [[p'_y v''] p''_k].
