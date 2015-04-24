@@ -56,6 +56,7 @@ Module Path.
         end
       | C.Join _ _ x y =>
         match p with
+        | Choose.Last.Path.Ret => None
         | Choose.Last.Path.ChooseLeft p =>
           match to_c x p with
           | None => None
@@ -66,7 +67,16 @@ Module Path.
               Some (C.Last.Path.Join p_x p_y, (v_x, v_y), p)
             end
           end
-        | _ => None
+        | Choose.Last.Path.ChooseRight p =>
+          match to_c y p with
+          | None => None
+          | Some (p_y, v_y, p) =>
+            match to_c x p with
+            | None => None
+            | Some (p_x, v_x, p) =>
+              Some (C.Last.Path.Join p_x p_y, (v_x, v_y), p)
+            end
+          end
         end
       end.
   End Last.

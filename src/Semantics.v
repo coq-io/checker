@@ -81,7 +81,11 @@ Module Choose.
 
       Fixpoint bind_assoc (p_x p_y p_z : t)
         : bind p_x (bind p_y p_z) = bind (bind p_x p_y) p_z.
-      Admitted.
+        destruct p_x; simpl.
+        - reflexivity.
+        - now rewrite bind_assoc.
+        - now rewrite bind_assoc.
+      Qed.
 
       Definition join (p_x p_f : t) : t :=
         ChooseLeft (bind p_x p_f).
