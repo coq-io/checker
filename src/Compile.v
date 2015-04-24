@@ -92,4 +92,56 @@ Module Path.
     | C.Path.JoinLeft p_x => Choose.Path.ChooseLeft (to_choose p_x)
     | C.Path.JoinRight p_y => Choose.Path.ChooseRight (to_choose p_y)
     end.
+
+  Fixpoint to_c {E A} (x : C.t E A) (p : Choose.Last.Path.t)
+    : (C.Last.Path.t * A * Choose.Last.Path.t) + C.Path.t :=
+    match x with
+    | C.Ret _ v => inl (C.Last.Path.Ret, v, p)
+    | C.Call c => inr C.Path.Call
+    | C.Let _ _ x f =>
+      match to_c x p with
+      | inl (p_x, v_x, p) =>
+        match to_c (f v_x) p with
+        | inl (p_f, v_y, p) => inl (C.Last.Path.Let p_x p_f, v_y, p)
+        | inr p_y => inr (C.Path.LetDone p_x p_y)
+        end
+      | inr p_x => inr p_x
+      end
+    | C.Choose _ x1 x2 =>
+      match p with
+      | Choose.Last.Path.Ret => inr C.Path.Call
+      | Choose.Last.Path.ChooseLeft p =>
+        match to_c x1 p with
+        | inl (p_x1, v_x1, p) => inl (C.Last.Path.ChooseLeft p_x1, v_x1, p)
+        | inr p_x1 => inr p_x1
+        end
+      | Choose.Last.Path.ChooseRight p =>
+        match to_c x2 p with
+        | inl (p_x2, v_x2, p) => inl (C.Last.Path.ChooseRight p_x2, v_x2, p)
+        | inr p_x2 => inr p_x2
+        end
+      end
+    | C.Join _ _ x y =>
+      match p with
+      | Choose.Last.Path.Ret => inr C.Path.Call
+      | Choose.Last.Path.ChooseLeft p =>
+        match to_c x p with
+        | inl (p_x, v_x, p) =>
+          match to_c y p with
+          | inl (p_y, v_y, p) => inl (C.Last.Path.Join p_x p_y, (v_x, v_y), p)
+          | inr p_y => inr p_y
+          end
+        | inr p_x => inr p_x
+        end
+      | Choose.Last.Path.ChooseRight p =>
+        match to_c y p with
+        | inl (p_y, v_y, p) =>
+          match to_c x p with
+          | inl (p_x, v_x, p) => inl (C.Last.Path.Join p_x p_y, (v_x, v_y), p)
+          | inr p_x => inr p_x
+          end
+        | inr p_y => inr p_y
+        end
+      end
+    end.
 End Path.
