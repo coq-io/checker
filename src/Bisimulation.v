@@ -376,6 +376,15 @@ Module ToC.
       (exists x', Choose.Eval.t c a p x x' /\ y = Choose.bind x' f).
   Admitted.
 
+  Fixpoint choose {E c a A} {p : Choose.Path.t} {x1 x2 x' : Choose.t E A}
+    (H : Choose.Eval.t c a p (Choose.Choose x1 x2) x')
+    : match p with
+      | Choose.Path.Done => False
+      | Choose.Path.ChooseLeft p => Choose.Eval.t c a p x1 x'
+      | Choose.Path.ChooseRight p => Choose.Eval.t c a p x2 x'
+      end.
+  Admitted.
+
   Fixpoint to_c {E c a A} {x : C.t E A} {x' : Choose.t E A} {p : Choose.Path.t}
     (H : Choose.Eval.t c a p (Compile.to_choose x) x')
     : exists p', exists x'',
@@ -414,6 +423,21 @@ Module ToC.
         split.
         * reflexivity.
         * now apply C.Eval.Let.
+    - assert (H_choose := choose H).
+      destruct p as [|p|p].
+      + destruct H_choose.
+      + destruct (to_c _ _ _ _ _ _ _ H_choose) as [p'_x1 [x'' [H_x1]]].
+        rewrite H_x1.
+        exists (C.Path.ChooseLeft p'_x1); exists x''.
+        split.
+        * reflexivity.
+        * now apply C.Eval.ChooseLeft.
+      + destruct (to_c _ _ _ _ _ _ _ H_choose) as [p'_x2 [x'' [H_x2]]].
+        rewrite H_x2.
+        exists (C.Path.ChooseRight p'_x2); exists x''.
+        split.
+        * reflexivity.
+        * now apply C.Eval.ChooseRight.
     - 
   Qed.
 End ToC.

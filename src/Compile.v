@@ -59,12 +59,12 @@ Module Path.
       | Choose.Path.ChooseLeft p =>
         match to_c x1 p with
         | inl (p_x1, v_x1, p) => inl (C.Last.Path.ChooseLeft p_x1, v_x1, p)
-        | inr p_x1 => inr p_x1
+        | inr p_x1 => inr (C.Path.ChooseLeft p_x1)
         end
       | Choose.Path.ChooseRight p =>
         match to_c x2 p with
         | inl (p_x2, v_x2, p) => inl (C.Last.Path.ChooseRight p_x2, v_x2, p)
-        | inr p_x2 => inr p_x2
+        | inr p_x2 => inr (C.Path.ChooseRight p_x2)
         end
       end
     | C.Join _ _ x y =>
