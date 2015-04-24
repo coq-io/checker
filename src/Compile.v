@@ -29,7 +29,7 @@ Module Path.
     Fixpoint to_c {E A} (x : C.t E A) (p : Choose.Last.Path.t)
       : option (C.Last.Path.t * A * Choose.Last.Path.t) :=
       match x with
-      | C.Ret _ v => Some (C.Last.Path.Ret, v, Choose.Last.Path.Ret)
+      | C.Ret _ v => Some (C.Last.Path.Ret, v, p)
       | C.Call _ => None
       | C.Let _ _ x f =>
         match to_c x p with

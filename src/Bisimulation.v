@@ -145,3 +145,49 @@ Module ToChoose.
       now apply to_choose.
   Qed.
 End ToChoose.
+
+Module ToC.
+  Module Last.
+    Fixpoint bind {E A B} {x : Choose.t E A} {f : A -> Choose.t E B} {v_y : B}
+      {p : Choose.Last.Path.t} (H : Choose.Last.Eval.t p (Choose.bind x f) v_y)
+      : exists v_x, exists p_x, exists p_f,
+        Choose.Last.Path.bind p_x p_f = p /\
+        Choose.Last.Eval.t p_x x v_x /\
+        Choose.Last.Eval.t p_f (f v_x) v_y.
+    Admitted.
+
+    Fixpoint aux {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
+      (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
+      : match Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) with
+        | Some (p'_x, v', p'_k) =>
+          v = v' /\ p'_k = p_k /\ C.Last.Eval.t p'_x x v
+        | None => False
+        end.
+      destruct x; simpl in *.
+      - inversion_clear H.
+        simpl.
+        split; trivial.
+        split; trivial.
+        apply C.Last.Eval.Ret.
+      - inversion H.
+      - destruct (bind H) as [v_x [p_x_x [p_x_f [H_p_x [H_p_x_x H_p_x_f]]]]].
+        assert (H' := aux _ _ x v_x p_x_x (Choose.Last.Path.bind p_x_f p_k) H_p_x_x).
+        rewrite Choose.Last.Path.bind_assoc in H'.
+        rewrite H_p_x in H'.
+        destruct (Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k)).
+        + destruct p as [[p'_x v'] p'_k].
+          destruct H' as [H_v' [H_p'_k H_x]].
+          rewrite H_p'_k.
+          rewrite <- H_v'.
+          assert (H' := aux _ _ (t v_x) v p_x_f p_k H_p_x_f).
+          destruct (Compile.Path.Last.to_c (t v_x) (Choose.Last.Path.bind p_x_f p_k)).
+          * destruct p as [[p'_x' v''] p'_k'].
+            destruct H' as [H_v'' [H_p''_k H_y]].
+            split; trivial.
+            split; trivial.
+            now apply (C.Last.Eval.Let _ _ _ _ v_x).
+          * destruct H'.
+        + destruct H'.
+      - 
+  End Last.
+End ToC.
