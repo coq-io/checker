@@ -187,7 +187,7 @@ Module ToC.
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
       : match Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) with
         | Some (p'_x, v', p'_k) =>
-          v = v' /\ p'_k = p_k /\ C.Last.Eval.t p'_x x v
+          v' = v /\ p'_k = p_k /\ C.Last.Eval.t p'_x x v
         | None => False
         end.
       destruct x; simpl in *.
@@ -205,7 +205,7 @@ Module ToC.
         + destruct p as [[p'_x v'] p'_k].
           destruct H' as [H_v' [H_p'_k H_x]].
           rewrite H_p'_k.
-          rewrite <- H_v'.
+          rewrite H_v'.
           assert (H' := to_c _ _ (t v_x) v p_x_f p_k H_p_x_f).
           destruct (Compile.Path.Last.to_c (t v_x)
             (Choose.Last.Path.bind p_x_f p_k)).
@@ -259,7 +259,7 @@ Module ToC.
             trivial.
           destruct p0 as [[p'_y v''] p''_k].
           destruct H'_p_y as [H_v_y [H_p''_k]].
-          rewrite <- H_v_x; rewrite <- H_v_y.
+          rewrite H_v_x; rewrite H_v_y.
           split; trivial.
           split; trivial.
           now apply C.Last.Eval.Join.
