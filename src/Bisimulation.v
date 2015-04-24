@@ -367,6 +367,16 @@ Module ToC.
     Qed.
   End Last.
 
+  Fixpoint map {E c a A B} {p : Choose.Path.t} {x : Choose.t E A} {f : A -> B}
+    {y : Choose.t E B} (H : Choose.Eval.t c a p (Choose.map x f) y)
+    : exists x', Choose.Eval.t c a p x x' /\ y = Choose.map x' f.
+    destruct x; simpl in *.
+    - inversion H.
+    - eexists.
+      split.
+      + 
+  Qed.
+
   Fixpoint bind {E c a A B} {p : Choose.Path.t} {x : Choose.t E A}
     {f : A -> Choose.t E B} {y : Choose.t E B}
     (H : Choose.Eval.t c a p (Choose.bind x f) y)
@@ -385,10 +395,34 @@ Module ToC.
       end.
   Admitted.
 
+  Fixpoint join {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
+    {x2 : Choose.t E B} {x'} (H : Choose.Eval.t c a p (Choose.join x1 x2) x')
+    : match p with
+      | Choose.Path.Done => False
+      | Choose.Path.ChooseLeft p =>
+        Choose.Eval.t c a p (Choose.join_left x1 x2) x'
+      | Choose.Path.ChooseRight p =>
+        Choose.Eval.t c a p (Choose.join_right x1 x2) x'
+      end.
+    now inversion_clear H.
+  Qed.
+
+  Fixpoint join_left {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
+    {x2 : Choose.t E B} {x'}
+    (H : Choose.Eval.t c a p (Choose.join_left x1 x2) x')
+    : exists x'1, Choose.Eval.t c a p x1 x'1 /\ Choose.join x'1 x2 = x'.
+    destruct x1; unfold Choose.join_left in *; simpl in *.
+    - exists (Choose.Ret a0).
+      split.
+      + apply Choose.Eval.Ret.
+      + 
+  Qed.
+
   Fixpoint to_c {E c a A} {x : C.t E A} {x' : Choose.t E A} {p : Choose.Path.t}
     (H : Choose.Eval.t c a p (Compile.to_choose x) x')
     : exists p', exists x'',
         Compile.Path.to_c x p = inr p' /\
+        Compile.to_choose x'' = x' /\
         C.Eval.t c a p' x x''.
     destruct x; simpl in *.
     - inversion H.
@@ -438,6 +472,16 @@ Module ToC.
         split.
         * reflexivity.
         * now apply C.Eval.ChooseRight.
-    - 
+    - assert (H_join := join H).
+      destruct p as [|p|p].
+      + destruct H_join.
+      + destruct (join_left H_join) as [x'1 [H_x'1 H_eq]].
+        destruct (to_c _ _ _ _ _ _ _ H_x'1) as [p'_x1 [x''1 [H'_x'1]]].
+        rewrite H'_x'1.
+        exists (C.Path.JoinLeft p'_x1); exists (C.Join _ _ x''1 x2).
+        split.
+        * reflexivity.
+        * now apply C.Eval.JoinLeft.
+      + 
   Qed.
 End ToC.
