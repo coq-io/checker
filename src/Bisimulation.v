@@ -165,6 +165,24 @@ Module ToC.
         end.
     Admitted.
 
+    Fixpoint join {E A B} {p : Choose.Last.Path.t} {x : Choose.t E A}
+      {y : Choose.t E B} {v} (H : Choose.Last.Eval.t p (Choose.join x y) v)
+      : match p with
+        | Choose.Last.Path.ChooseLeft p =>
+          Choose.Last.Eval.t p (Choose.join_left x y) v
+        | _ => False
+        end.
+    Admitted.
+
+    Fixpoint join_left {E A B} {p : Choose.Last.Path.t} {x : Choose.t E A}
+      {y : Choose.t E B} {v_x : A} {v_y : B}
+      (H : Choose.Last.Eval.t p (Choose.join_left x y) (v_x, v_y))
+      : exists p_x, exists p_y,
+        p = Choose.Last.Path.bind p_x p_y /\
+        Choose.Last.Eval.t p_x x v_x /\
+        Choose.Last.Eval.t p_y y v_y.
+    Admitted.
+
     Fixpoint aux {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
       : match Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) with
@@ -219,6 +237,31 @@ Module ToC.
             split; trivial.
             now apply C.Last.Eval.ChooseRight.
           * destruct H'_x2.
-      - 
+      - assert (H_join := join H).
+        destruct p_x as [|p|].
+        + destruct H_join.
+        + destruct v as [v_x v_y].
+          destruct (join_left H_join) as [p_x [p_y [H_p [H_p_x H_p_y]]]].
+          simpl.
+          rewrite H_p.
+          rewrite <- Choose.Last.Path.bind_assoc.
+          assert (H'_p_x := aux _ _ _ _ _ (Choose.Last.Path.bind p_y p_k) H_p_x).
+          destruct (Compile.Path.Last.to_c x1
+            (Choose.Last.Path.bind p_x (Choose.Last.Path.bind p_y p_k)));
+            trivial.
+          destruct p0 as [[p'_x v'] p'_k].
+          destruct H'_p_x as [H_v_x [H_p'_k]].
+          rewrite H_p'_k.
+          assert (H'_p_y := aux _ _ _ _ _ p_k H_p_y).
+          destruct (Compile.Path.Last.to_c x2 (Choose.Last.Path.bind p_y p_k));
+            trivial.
+          destruct p0 as [[p'_y v''] p''_k].
+          destruct H'_p_y as [H_v_y [H_p''_k]].
+          rewrite <- H_v_x; rewrite <- H_v_y.
+          split; trivial.
+          split; trivial.
+          now apply C.Last.Eval.Join.
+        + destruct H_join.
+    Qed.
   End Last.
 End ToC.
