@@ -419,8 +419,9 @@ Module ToC.
       + apply (Choose.Eval.Call c a).
   Qed.*)
 
+  (* True but maybe not usefull. *)
   Fixpoint map {E c a A B} {p : Choose.Path.t} {x x' : Choose.t E A}
-    {f : A -> B} (H : Choose.Eval.t c a p x x')
+    (f : A -> B) (H : Choose.Eval.t c a p x x')
     : Choose.Eval.t c a p (Choose.map x f) (Choose.map x' f).
     destruct p; inversion_clear H; simpl.
     - apply (Choose.Eval.Call c a).
@@ -465,7 +466,7 @@ Module ToC.
     (H : Choose.Eval.t c a p (Choose.join_left x1 x2) x')
     : exists x'1, Choose.Eval.t c a p x1 x'1 /\ Choose.join x'1 x2 = x'.
     destruct x1; unfold Choose.join_left in *; simpl in *.
-    - Check ToChoose.Last.map H.
+    - Check map H.
       exists (Choose.Ret a0).
       split.
       + apply Choose.Eval.Ret.
