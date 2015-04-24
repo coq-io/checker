@@ -156,6 +156,15 @@ Module ToC.
         Choose.Last.Eval.t p_f (f v_x) v_y.
     Admitted.
 
+    Fixpoint choose {E A} {p_x : Choose.Last.Path.t} {x1 x2 : Choose.t E A}
+      {v : A} (H : Choose.Last.Eval.t p_x (Choose.Choose x1 x2) v)
+      : match p_x with
+        | Choose.Last.Path.Ret => False
+        | Choose.Last.Path.ChooseLeft p_x => Choose.Last.Eval.t p_x x1 v
+        | Choose.Last.Path.ChooseRight p_x => Choose.Last.Eval.t p_x x2 v
+        end.
+    Admitted.
+
     Fixpoint aux {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Last.Path.t}
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
       : match Compile.Path.Last.to_c x (Choose.Last.Path.bind p_x p_k) with
@@ -188,6 +197,28 @@ Module ToC.
             now apply (C.Last.Eval.Let _ _ _ _ v_x).
           * destruct H'.
         + destruct H'.
+      - destruct p_x as [|p_x | p_x].
+        + destruct (choose H).
+        + assert (H_x1 := choose H).
+          simpl in *.
+          assert (H'_x1 := aux _ _ _ _ _ p_k H_x1).
+          destruct (Compile.Path.Last.to_c x1 (Choose.Last.Path.bind p_x p_k)).
+          * destruct p as [[p'_x v'] p'_k].
+            destruct H'_x1 as [H_v' [H_p'_k H1]].
+            split; trivial.
+            split; trivial.
+            now apply C.Last.Eval.ChooseLeft.
+          * destruct H'_x1.
+        + assert (H_x2 := choose H).
+          simpl in *.
+          assert (H'_x2 := aux _ _ _ _ _ p_k H_x2).
+          destruct (Compile.Path.Last.to_c x2 (Choose.Last.Path.bind p_x p_k)).
+          * destruct p as [[p'_x v'] p'_k].
+            destruct H'_x2 as [H_v' [H_p'_k H2]].
+            split; trivial.
+            split; trivial.
+            now apply C.Last.Eval.ChooseRight.
+          * destruct H'_x2.
       - 
   End Last.
 End ToC.

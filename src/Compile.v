@@ -49,9 +49,9 @@ Module Path.
           | Some (p_x1, v_x1, p) => Some (C.Last.Path.ChooseLeft p_x1, v_x1, p)
           end
         | Choose.Last.Path.ChooseRight p =>
-          match to_c x1 p with
+          match to_c x2 p with
           | None => None
-          | Some (p_x1, v_x1, p) => Some (C.Last.Path.ChooseRight p_x1, v_x1, p)
+          | Some (p_x2, v_x2, p) => Some (C.Last.Path.ChooseRight p_x2, v_x2, p)
           end
         end
       | C.Join _ _ x y =>
