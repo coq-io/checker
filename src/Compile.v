@@ -51,7 +51,7 @@ Module Path.
         | inl (p_f, v_y, p) => inl (C.Last.Path.Let p_x p_f, v_y, p)
         | inr p_y => inr (C.Path.LetDone p_x p_y)
         end
-      | inr p_x => inr p_x
+      | inr p_x => inr (C.Path.Let p_x)
       end
     | C.Choose _ x1 x2 =>
       match p with

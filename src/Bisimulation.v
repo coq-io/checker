@@ -290,7 +290,7 @@ Module ToC.
           now apply Choose.Last.Eval.ChooseRight.
     Qed.
 
-    Fixpoint to_c {E A} {x : C.t E A} {v : A} {p_x p_k : Choose.Path.t}
+    Fixpoint to_c {E A} {x : C.t E A} {v : A} {p_x} (p_k : Choose.Path.t)
       (H : Choose.Last.Eval.t p_x (Compile.to_choose x) v)
       : exists p'_x,
           Compile.Path.to_c x (Choose.Path.bind p_x p_k) =
@@ -367,10 +367,53 @@ Module ToC.
     Qed.
   End Last.
 
+  Fixpoint bind {E c a A B} {p : Choose.Path.t} {x : Choose.t E A}
+    {f : A -> Choose.t E B} {y : Choose.t E B}
+    (H : Choose.Eval.t c a p (Choose.bind x f) y)
+    : (exists p_x, exists v_x, exists p_f,
+        Choose.Last.Eval.t p_x x v_x /\ Choose.Eval.t c a p_f (f v_x) y /\
+          p = Choose.Path.bind p_x p_f) \/
+      (exists x', Choose.Eval.t c a p x x' /\ y = Choose.bind x' f).
+  Admitted.
+
   Fixpoint to_c {E c a A} {x : C.t E A} {x' : Choose.t E A} {p : Choose.Path.t}
     (H : Choose.Eval.t c a p (Compile.to_choose x) x')
     : exists p', exists x'',
         Compile.Path.to_c x p = inr p' /\
         C.Eval.t c a p' x x''.
-  Admitted.
+    destruct x; simpl in *.
+    - inversion H.
+    - replace command with c.
+      + exists C.Path.Call; exists (C.Ret _ a).
+        split.
+        * reflexivity.
+        * apply C.Eval.Call.
+      + exact (
+          match H in Choose.Eval.t _ _ _ x _ return
+            match x with
+            | Choose.Call c' _ => c = c'
+            | _ => True
+            end : Prop with
+          | Choose.Eval.Call _ => eq_refl
+          | _ => I
+          end).
+    - destruct (bind H) as
+        [[p_x [v_x [p_f [H_x [H_f H_p]]]]] | [x'' [H_x H_y]]].
+      + rewrite H_p.
+        destruct (Last.to_c p_f H_x) as [p'_x [H'_x]].
+        rewrite H'_x.
+        destruct (to_c _ _ _ _ _ _ _ H_f) as [p'_f [x'' [H'_f]]].
+        rewrite H'_f.
+        exists (C.Path.LetDone p'_x p'_f); exists x''.
+        split.
+        * reflexivity.
+        * now apply (C.Eval.LetDone _ _ _ _ _ _ v_x).
+      + destruct (to_c _ _ _ _ _ _ _ H_x) as [p'_x [x''' [H'_x]]].
+        rewrite H'_x.
+        exists (C.Path.Let p'_x); exists (C.Let _ _ x''' t).
+        split.
+        * reflexivity.
+        * now apply C.Eval.Let.
+    - 
+  Qed.
 End ToC.
