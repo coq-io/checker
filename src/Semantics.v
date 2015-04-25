@@ -106,13 +106,24 @@ Module Choose.
 
   Module Eval.
     Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
-      {A : Type} : Path.t -> Choose.t E A -> Choose.t E A -> Prop :=
-    | Call : forall h, t c a Path.Done (Choose.Call c h) (h a)
-    | ChooseLeft : forall p_x1 x1 x2 x1',
-      t c a p_x1 x1 x1' ->
-      t c a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2) x1'
-    | ChooseRight : forall p_x2 x1 x2 x2',
-      t c a p_x2 x2 x2' ->
-      t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) x2'.
+      {A : Type} : Path.t -> Choose.t E A -> Prop :=
+    | Call : forall h, t c a Path.Done (Choose.Call c h)
+    | ChooseLeft : forall p_x1 x1 x2,
+      t c a p_x1 x1 ->
+      t c a (Path.ChooseLeft p_x1) (Choose.Choose x1 x2)
+    | ChooseRight : forall p_x2 x1 x2,
+      t c a p_x2 x2 ->
+      t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2).
   End Eval.
+
+  Fixpoint eval {E c a A} {p : Path.t} {x : Choose.t E A} (H : Eval.t c a p x)
+    : Choose.t E A :=
+    match x with
+    | Choose.Ret _ => x
+    | Choose.Call _ h => h a
+    end.
+    destruct x as [v_x | c' | x1 x2].
+    - assert (H_false : False) by inversion H; destruct H_false.
+      
+  Defined.
 End Choose.
