@@ -339,7 +339,7 @@ Qed.
     inversion_clear H.*)
 
 Lemma rewrite_call {E : Effect.t} {c c' : Effect.command E} (H : c = c')
-  {A : Type} {h : Effect.answer E c -> Choose.t E A}
+  {A : Type} (h : Effect.answer E c -> Choose.t E A)
   : exists h', Choose.Call c h = Choose.Call c' h'.
   exists (eq_rect c (fun c' => Effect.answer E c' -> _) h _ H).
   exact (
@@ -365,21 +365,55 @@ Fixpoint join_left {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
     split; [apply Choose.Last.Eval.Ret |].
     split; [apply H | reflexivity].
   - right.
-    assert (H_c : c0 = c) by admit.
-    refine (let t' := eq_rect c0 (fun c => Effect.answer E c -> _) t _ H_c in _).
-    simpl in t'.
-    assert (H_call : Choose.Call c0 t = Choose.Call c t').
-    unfold t'.
-    refine (
-      match H_c in eq _ c' return
-        Choose.Call c0 t =
-Choose.Call c'
-  (eq_rect c0 (fun c1 : command E => answer E c1 -> Choose.t E A) t c' H_c)
-      with
-      | eq_refl => _
-      end).
-    reflexivity.
+    assert (H_join : Choose.Eval.t c a p
+      (Choose.Call c0
+         (fun a0 => Choose.join (t a0) x2)) x').
+    exact H.
+    inversion H_join.
+    refine (let t' :=
+      eq_rect c0 (fun c => Effect.answer E c -> _) t _ (eq_sym H2) in _).
+    assert (H_call : Choose.Call c0 t = Choose.Call c t') by admit.
+    assert (H_call_join : Choose.Call c0
+      (fun a0 : answer E c0 => Choose.join (t a0) x2) =
+      Choose.Call c (fun a => Choose.join (t' a) x2)) by admit.
+    rewrite H_call.
+    rewrite H_call_join in H_join.
     exists (t' a).
+    split.
+    + apply Choose.Eval.Call.
+    + rewrite H1.
+      refine (
+        match H_join in Choose.Eval.t _ _ _ x x' return
+          match x with
+          | Choose.Call c h =>
+            (*Choose.join (t' a) x2*)h a = x'
+          | _ => True
+          end : Prop with
+        | Choose.Eval.Call _ => _
+        | _ => I
+        end).
+      reflexivity.
+intuition.
+      inversion_clear H_join.
+intuition.
+intuition.
+      
+
+    destruct (rewrite_call (eq_sym H2)
+      (fun a0 => Choose.join (t a0) x2)) as [h' H_h'].
+    rewrite H_h' in H_join.
+    assert (H_join' : Choose.Eval.t c a p
+      (Choose.Call c
+         (fun a => Choose.join (t a) x2)) x').
+    inversion H_join.
+    destruct (rewrite_call (eq_sym H2) t) as [h H_h].
+    exists (h a).
+    split.
+    + rewrite H_h.
+      apply Choose.Eval.Call.
+    + 
+      
+    exists (rewrite_call ).
     split.
     + rewrite H_call.
       inversion_clear H.
