@@ -15,6 +15,15 @@ Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   | Choose x1 x2 => Choose (map x1 f) (map x2 f)
   end.
 
+Fixpoint map_compose {E A B C} (x : t E A) (f : A -> B) (g : B -> C)
+  {struct x} : map (map x f) g = map x (fun x => g (f x)).
+Admitted.
+(*  destruct x; simpl.
+  - reflexivity.
+  - apply f_equal.
+    rewrite (map_compose _ _ _ _ (t0 a).
+Qed.*)
+
 Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
   match x with
   | Ret v => f v

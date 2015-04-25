@@ -551,10 +551,21 @@ Fixpoint to_c {E c a A} {x : C.t E A} {x' : Choose.t E A} {p : Choose.Path.t}
     + destruct H_join.
     + destruct (join_left H_join) as [[p1 [v1 [p2 [H1 [H2 H3]]]]] |
         [x'1 [H_x'1 H_eq]]].
-      * 
+      * destruct (Last.to_c p2 H1) as [p'_x1 [H'_x1]].
+        rewrite H3.
+        rewrite H'_x1.
+        assert (H2' : Choose.Eval.t c a p2 (Compile.to_choose x2)
+          (Choose.map x' (fun x1x2 => snd x1x2)))
+          by destruct falso.
+        destruct (to_c _ _ _ _ _ _ _ H2') as [p'_x2 [x'2 [H'2]]].
+        rewrite H'2.
+        exists (C.Path.JoinLeftDone p'_x1 p'_x2),
+          (C.Let _ _ x'2 (fun v2 => C.Ret _ (v1, v2))).
+        split; [reflexivity |].
+        now apply C.Eval.JoinLeftDone.
       * destruct (to_c _ _ _ _ _ _ _ H_x'1) as [p'_x1 [x''1 [H'_x'1]]].
         rewrite H'_x'1.
         exists (C.Path.JoinLeft p'_x1); exists (C.Join _ _ x''1 x2).
         split; [reflexivity | now apply C.Eval.JoinLeft].
-    + 
+    + destruct falso.
 Qed.

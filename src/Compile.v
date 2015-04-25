@@ -79,7 +79,7 @@ Module Path.
         | inl (p_x, v_x, p) =>
           match to_c y p with
           | inl (p_y, v_y, p) => inl (C.Last.Path.Join p_x p_y, (v_x, v_y), p)
-          | inr p_y => inr p_y
+          | inr p_y => inr (C.Path.JoinLeftDone p_x p_y)
           end
         | inr p_x => inr (C.Path.JoinLeft p_x)
         end
