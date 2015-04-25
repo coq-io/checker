@@ -1,6 +1,7 @@
 -R src Io.Checker
 
-src/Bisimulation.v
+src/Bisimulation/ToC.v
+src/Bisimulation/ToChoose.v
 src/Choose.v
 src/Compile.v
 src/Semantics.v
