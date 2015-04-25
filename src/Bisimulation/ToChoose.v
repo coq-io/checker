@@ -47,7 +47,8 @@ Module Last.
   Definition join {E A B} {p_x x} {v_x : A} {p_y y} {v_y : B}
     (H_x : Choose.Last.Eval.t p_x x v_x) (H_y : Choose.Last.Eval.t p_y y v_y)
     : Choose.Last.Eval.t (E := E)
-      (Choose.Path.join p_x p_y) (Choose.join x y) (v_x, v_y).
+      (Choose.Path.ChooseLeft (Choose.Path.bind p_x p_y)) (Choose.join x y)
+      (v_x, v_y).
     apply Choose.Last.Eval.ChooseLeft.
     destruct H_x; simpl.
     - now apply map.
@@ -110,6 +111,13 @@ Fixpoint join_left {E c a A B} {p_x} {x x' : Choose.t E A} {y : Choose.t E B}
     now apply join_left.
 Qed.
 
+Fixpoint join_left_done {E c a A B} {p_x p_y} {x : Choose.t E A} {v_x : A}
+  {y y' : Choose.t E B} (H_x : Choose.Last.Eval.t p_x x v_x)
+  (H_y : Choose.Eval.t c a p_y y y')
+  : Choose.Eval.t c a (Choose.Path.bind p_x p_y) (Choose.join_left x y)
+    (Choose.bind y' (fun v_y => Choose.Ret (v_x, v_y))).
+Admitted.
+
 Fixpoint join_right {E c a A B} {x : Choose.t E B} {p_y}
   {y y' : Choose.t E A} (H : Choose.Eval.t c a p_y y y')
   : Choose.Eval.t c a p_y (Choose.join_right x y) (Choose.join x y').
@@ -139,6 +147,10 @@ Fixpoint to_choose {E c a A} {p : C.Path.t} {x x' : C.t E A}
   - apply Choose.Eval.ChooseLeft.
     apply join_left.
     now apply to_choose.
+  - apply Choose.Eval.ChooseLeft.
+    apply join_left_done.
+    + now apply Last.to_choose.
+    + now apply to_choose.
   - apply Choose.Eval.ChooseRight.
     apply join_right.
     now apply to_choose.

@@ -37,6 +37,7 @@ Module C.
     | ChooseLeft : t -> t
     | ChooseRight : t -> t
     | JoinLeft : t -> t
+    | JoinLeftDone : Last.Path.t -> t -> t
     | JoinRight : t -> t.
   End Path.
 
@@ -58,6 +59,10 @@ Module C.
     | JoinLeft : forall A B p_x x x' y,
       t c a p_x x x' ->
       t c a (Path.JoinLeft p_x) (C.Join A B x y) (C.Join A B x' y)
+    | JoinLeftDone : forall A B p_x p_y x v_x y y',
+      Last.Eval.t p_x x v_x -> t c a p_y y y' ->
+      t c a (Path.JoinLeftDone p_x p_y) (C.Join A B x y)
+        (C.Let _ _ y' (fun v_y => C.Ret _ (v_x, v_y)))
     | JoinRight : forall A B x p_y y y',
       t c a p_y y y' ->
       t c a (Path.JoinRight p_y) (C.Join A B x y) (C.Join A B x y').
@@ -85,9 +90,6 @@ Module Choose.
       - now rewrite bind_assoc.
       - now rewrite bind_assoc.
     Qed.
-
-    Definition join (p_x p_f : t) : t :=
-      ChooseLeft (bind p_x p_f).
   End Path.
 
   Module Last.
