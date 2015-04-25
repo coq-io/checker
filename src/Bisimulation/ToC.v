@@ -349,6 +349,53 @@ Lemma rewrite_call {E : Effect.t} {c c' : Effect.command E} (H : c = c')
     end).
 Qed.
 
+Lemma falso : False.
+Admitted.
+
+Fixpoint join_left {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
+  {x2 : Choose.t E B} {x'}
+  (H : Choose.Eval.t c a p (Choose.join_left x1 x2) x')
+  : (exists p1, exists v1, exists p2,
+      Choose.Last.Eval.t p1 x1 v1 /\
+      Choose.Eval.t c a p2 (Choose.map x2 (fun v2 => (v1, v2))) x' /\
+      p = Choose.Path.bind p1 p2) \/
+    (exists x'1,
+      Choose.Eval.t c a p x1 x'1 /\
+      Choose.join x'1 x2 = x').
+  destruct x1; unfold Choose.join_left in *; simpl in *.
+  - left.
+    exists Choose.Path.Done, a0, p.
+    split; [apply Choose.Last.Eval.Ret |].
+    split; [apply H | reflexivity].
+  - right.
+    destruct falso.
+  - inversion_clear H.
+    + destruct (join_left _ _ _ _ _ _ _ _ _ H0).
+      * left.
+        destruct H as [p1 [v1 [p2 [H1 [H2 H3]]]]].
+        exists (Choose.Path.ChooseLeft p1), v1, p2.
+        split; [now apply Choose.Last.Eval.ChooseLeft |].
+        split; trivial.
+        now rewrite H3.
+      * right.
+        destruct H as [x'1 [H1 H2]].
+        exists x'1.
+        split; trivial.
+        now apply Choose.Eval.ChooseLeft.
+    + destruct (join_left _ _ _ _ _ _ _ _ _ H0).
+      * left.
+        destruct H as [p1 [v1 [p2 [H1 [H2 H3]]]]].
+        exists (Choose.Path.ChooseRight p1), v1, p2.
+        split; [now apply Choose.Last.Eval.ChooseRight |].
+        split; trivial.
+        now rewrite H3.
+      * right.
+        destruct H as [x'1 [H1 H2]].
+        exists x'1.
+        split; trivial.
+        now apply Choose.Eval.ChooseRight.
+Qed.
+
 Fixpoint join_left {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
   {x2 : Choose.t E B} {x'}
   (H : Choose.Eval.t c a p (Choose.join_left x1 x2) x')
