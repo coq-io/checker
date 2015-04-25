@@ -338,6 +338,17 @@ Qed.
       
     inversion_clear H.*)
 
+Lemma rewrite_call {E : Effect.t} {c c' : Effect.command E} (H : c = c')
+  {A : Type} {h : Effect.answer E c -> Choose.t E A}
+  : exists h', Choose.Call c h = Choose.Call c' h'.
+  exists (eq_rect c (fun c' => Effect.answer E c' -> _) h _ H).
+  exact (
+    match H in eq _ c' return
+      Choose.Call c h = Choose.Call c' (eq_rect c _ h c' H) with
+    | eq_refl => eq_refl
+    end).
+Qed.
+
 Fixpoint join_left {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
   {x2 : Choose.t E B} {x'}
   (H : Choose.Eval.t c a p (Choose.join_left x1 x2) x')
