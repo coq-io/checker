@@ -6,6 +6,7 @@ src/Bisimulation/Equiv.v
 src/Choose.v
 src/Compile.v
 src/DeadLockFree.v
+src/Decide.v
 src/Model.v
 src/Semantics.v
 src/Trace.v

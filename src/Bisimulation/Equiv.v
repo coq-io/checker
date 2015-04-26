@@ -71,3 +71,4 @@ Module DeadLockFree.
     - now apply Total.to_c.
     - exact H'_not_stuck.
   Qed.
+End DeadLockFree.
