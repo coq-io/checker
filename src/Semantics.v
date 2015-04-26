@@ -142,11 +142,11 @@ Module Choose.
   End LastStep.
 
   Module Step.
-    Inductive t {E S A} (m : Model.t E S) (s : S)
+    Inductive t {E S A} (m : Model.t E S) (c : Effect.command E) (s : S)
       : Choose.t E A -> Choose.t E A -> S -> Prop :=
-    | New : forall x x' c p (H : Model.pre m c s),
+    | New : forall x x' p (H : Model.pre m c s),
       Eval.t c (Model.answer m c s H) p x x' ->
-      t m s x x' (Model.state m c s H).
+      t m c s x x' (Model.state m c s H).
   End Step.
 
   Module Trace.

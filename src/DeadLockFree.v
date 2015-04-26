@@ -21,9 +21,9 @@ End C.
 Module Choose2.
   Inductive t {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A) : Prop :=
   | Ret : forall v, Choose.LastStep.t x v -> t m s x
-  | Call : forall x' s',
-    Choose.Step.t m s x x' s' ->
-    (forall x' s', Choose.Step.t m s x x' s' -> t m s' x') ->
+  | Call : forall c x' s',
+    Choose.Step.t m c s x x' s' ->
+    (forall c x' s', Choose.Step.t m c s x x' s' -> t m s' x') ->
     t m s x.
 End Choose2.
 
