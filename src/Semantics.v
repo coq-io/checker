@@ -70,6 +70,14 @@ Module C.
       t c a (Path.JoinRight p_y) (C.Join A B x y) (C.Join A B x y').
   End Eval.
 
+  Module Step.
+    Inductive t {E S A} (m : Model.t E S) (c : Effect.command E) (s : S)
+      : C.t E A -> C.t E A -> S -> Prop :=
+    | New : forall x x' p (H : Model.pre m c s),
+      Eval.t c (Model.answer m c s H) p x x' ->
+      t m c s x x' (Model.state m c s H).
+  End Step.
+
   Module Trace.
     Module Partial.
       Inductive t {E : Effect.t} {A : Type} (x : C.t E A)

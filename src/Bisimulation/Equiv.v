@@ -1,13 +1,13 @@
 Require Import Io.All.
 Require Choose.
 Require Compile.
-Require DeadLockFree.
+Require Import DeadLockFree.
 Require Import Semantics.
 Require ToChoose.
 Require ToC.
 Require Trace.
 
-Module Trace.
+(*Module Trace.
   Fixpoint to_choose {E A} (trace : Trace.t E (C.t E A))
     : Trace.t E (Choose.t E A) :=
     match trace with
@@ -71,4 +71,9 @@ Module DeadLockFree.
     - now apply Total.to_c.
     - exact H'_not_stuck.
   Qed.
-End DeadLockFree.
+End DeadLockFree.*)
+
+Lemma to_c {E S A} {m : Model.t E S} {s : S} {x : C.t E A}
+  (H : Choose.DeadLockFree.t m s (Compile.to_choose x))
+  : C.DeadLockFree.t m s x.
+Qed.

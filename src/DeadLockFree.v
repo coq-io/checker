@@ -5,11 +5,11 @@ Require Trace.
 
 Module C.
   Module DeadLockFree.
-    Inductive t {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A) : Prop :=
-    | Ret : forall v, Choose.LastStep.t x v -> t m s x
+    Inductive t {E S A} (m : Model.t E S) (s : S) (x : C.t E A) : Prop :=
+    | Ret : forall p v, C.Last.Eval.t p x v -> t m s x
     | Call : forall c x' s',
-      Choose.Step.t m c s x x' s' ->
-      (forall c x' s', Choose.Step.t m c s x x' s' -> t m s' x') ->
+      C.Step.t m c s x x' s' ->
+      (forall c x' s', C.Step.t m c s x x' s' -> t m s' x') ->
       t m s x.
   End DeadLockFree.
 End C.
