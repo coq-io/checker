@@ -497,8 +497,9 @@ Fixpoint to_c {E c a A} {x : C.t E A} {x' : Choose.t E A} {p : Choose.Path.t}
   (H : Choose.Eval.t c a p (Compile.to_choose x) x')
   : exists p', exists x'',
       Compile.Path.to_c x p = inr p' /\
+      Compile.to_choose x'' = x' /\
       C.Eval.t c a p' x x''.
-  destruct x; simpl in *.
+  (*destruct x; simpl in *.
   - inversion H.
   - replace command with c.
     + exists C.Path.Call, (C.Ret _ a).
@@ -568,4 +569,5 @@ Fixpoint to_c {E c a A} {x : C.t E A} {x' : Choose.t E A} {p : Choose.Path.t}
         exists (C.Path.JoinLeft p'_x1); exists (C.Join _ _ x''1 x2).
         split; [reflexivity | now apply C.Eval.JoinLeft].
     + destruct falso.
-Qed.
+Qed.*)
+Admitted.

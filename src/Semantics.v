@@ -74,7 +74,7 @@ Module C.
       Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
         : Trace.t E (C.t E A) -> Prop :=
       | Ret : t x (Trace.Ret x)
-      | Call : forall c p k, (forall a x', Eval.t c a p x x' -> t x' (k a)) ->
+      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
         t x (Trace.Call c k).
     End Partial.
 
@@ -82,7 +82,7 @@ Module C.
       Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
         : Trace.t E A -> Prop :=
       | Ret : forall p v, Last.Eval.t p x v -> t x (Trace.Ret v)
-      | Call : forall c p k, (forall a x', Eval.t c a p x x' -> t x' (k a)) ->
+      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
         t x (Trace.Call c k).
     End Total.
   End Trace.
@@ -140,7 +140,7 @@ Module Choose.
       Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
         : Trace.t E (Choose.t E A) -> Prop :=
       | Ret : t x (Trace.Ret x)
-      | Call : forall c p k, (forall a x', Eval.t c a p x x' -> t x' (k a)) ->
+      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
         t x (Trace.Call c k).
     End Partial.
 
@@ -148,7 +148,7 @@ Module Choose.
       Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
         : Trace.t E A -> Prop :=
       | Ret : forall p v, Last.Eval.t p x v -> t x (Trace.Ret v)
-      | Call : forall c p k, (forall a x', Eval.t c a p x x' -> t x' (k a)) ->
+      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
         t x (Trace.Call c k).
     End Total.
   End Trace.
