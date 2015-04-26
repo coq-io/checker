@@ -1,5 +1,6 @@
 Require Import Coq.Bool.Bool.
 Require Import Io.All.
+Require Bisimulation.Equiv.
 Require Choose.
 Require Import DeadLockFree.
 Require Model.
@@ -33,73 +34,90 @@ Definition dead_lock_free {E S A} {m : Model.t E S} (dec : Model.Dec.t m)
   (s : S) (x : Choose.t E A) : bool :=
   andb (not_stuck dec s x) (aux dec s x).
 
-Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
-  {x : Choose.t E A} (H : not_stuck dec s x = true)
-  : (exists p, exists v, Choose.Last.Eval.t p x v) \/
-    (exists c, exists x', exists s', Choose.Step.t m c s x x' s').
-  destruct x as [v | c h | x1 x2]; simpl in H.
-  - left.
-    exists Choose.Path.Done, v.
-    apply Choose.Last.Eval.Ret.
-  - right.
-    destruct (dec c s) as [H_pre |].
-    + exists c, (h (Model.answer m c s H_pre)), (Model.state m c s H_pre).
-      apply (Choose.Step.New _ _ _ _ _ Choose.Path.Done).
-      apply Choose.Eval.Call.
-    + congruence.
-  - destruct (orb_prop _ _ H) as [H_not_stuck | H_not_stuck].
-    + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
-      [[p [v H_last]] | [c [x' [s' H_step]]]].
-      * left.
-        eexists; eexists.
-        apply Choose.Last.Eval.ChooseLeft.
-        exact H_last.
-      * right.
-        exists c, x', s'.
-        destruct H_step.
-        eapply Choose.Step.New.
-        apply Choose.Eval.ChooseLeft.
-        exact H1.
-    + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
-      [[p [v H_last]] | [c [x' [s' H_step]]]].
-      * left.
-        eexists; eexists.
-        apply Choose.Last.Eval.ChooseRight.
-        exact H_last.
-      * right.
-        exists c, x', s'.
-        destruct H_step.
-        eapply Choose.Step.New.
-        apply Choose.Eval.ChooseRight.
-        exact H1.
-Defined.
+Module Choose.
+  Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
+    {x : Choose.t E A} (H : not_stuck dec s x = true)
+    : (exists p, exists v, Choose.Last.Eval.t p x v) \/
+      (exists c, exists x', exists s', Choose.Step.t m c s x x' s').
+    destruct x as [v | c h | x1 x2]; simpl in H.
+    - left.
+      exists Choose.Path.Done, v.
+      apply Choose.Last.Eval.Ret.
+    - right.
+      destruct (dec c s) as [H_pre |].
+      + exists c, (h (Model.answer m c s H_pre)), (Model.state m c s H_pre).
+        apply (Choose.Step.New _ _ _ _ _ Choose.Path.Done).
+        apply Choose.Eval.Call.
+      + congruence.
+    - destruct (orb_prop _ _ H) as [H_not_stuck | H_not_stuck].
+      + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
+        [[p [v H_last]] | [c [x' [s' H_step]]]].
+        * left.
+          eexists; eexists.
+          apply Choose.Last.Eval.ChooseLeft.
+          exact H_last.
+        * right.
+          exists c, x', s'.
+          destruct H_step.
+          eapply Choose.Step.New.
+          apply Choose.Eval.ChooseLeft.
+          exact H1.
+      + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
+        [[p [v H_last]] | [c [x' [s' H_step]]]].
+        * left.
+          eexists; eexists.
+          apply Choose.Last.Eval.ChooseRight.
+          exact H_last.
+        * right.
+          exists c, x', s'.
+          destruct H_step.
+          eapply Choose.Step.New.
+          apply Choose.Eval.ChooseRight.
+          exact H1.
+  Defined.
 
-Fixpoint dead_lock_free_ok {X Y S A} {m : Model.t (NoDeps.E X Y) S}
-  {dec : Model.Dec.t m} {s : S} {x : Choose.t (NoDeps.E X Y) A}
-  (H : dead_lock_free dec s x = true) : Choose.DeadLockFree.t m s x.
-  destruct (proj1 (andb_true_iff _ _) H) as [H_not_stuck H_aux].
-  destruct (not_stuck_ok H_not_stuck) as [[p [v H_v]] | [c [x' [s' H_x]]]].
-  - now apply (Choose.DeadLockFree.Ret _ _ _ p v).
-  - apply (Choose.DeadLockFree.Call _ _ _ _ x' s' H_x).
-    clear c x' s' H_x H H_not_stuck.
-    induction x; intros c' x' s' H_x; simpl in H_aux.
-    + inversion_clear H_x.
-      inversion H0.
-    + inversion_clear H_x.
-      inversion H1.
-      rewrite <- H4 in *.
-      destruct (dec c' s) as [H_pre | H_not_pre]; simpl in H_aux.
-      * rewrite (Model.stable_state m c' s H0 H_pre).
-        rewrite (Model.stable_answer m c' s H0 H_pre).
-        now apply (dead_lock_free_ok _ _ _ _ _ dec).
-      * destruct (H_not_pre H0).
-    + inversion_clear H_x.
-      destruct (proj1 (andb_true_iff _ _) H_aux) as [H_x1 H_x2].
-      inversion_clear H0.
-      * apply (IHx1 H_x1 c').
-        eapply Choose.Step.New.
-        apply H1.
-      * apply (IHx2 H_x2 c').
-        eapply Choose.Step.New.
-        apply H1.
-Qed.
+  Fixpoint dead_lock_free_ok_no_deps {X Y S A} {m : Model.t (NoDeps.E X Y) S}
+    (dec : Model.Dec.t m) {s : S} {x : Choose.t (NoDeps.E X Y) A}
+    (H : dead_lock_free dec s x = true) : Choose.DeadLockFree.t m s x.
+    destruct (proj1 (andb_true_iff _ _) H) as [H_not_stuck H_aux].
+    destruct (not_stuck_ok H_not_stuck) as [[p [v H_v]] | [c [x' [s' H_x]]]].
+    - now apply (Choose.DeadLockFree.Ret _ _ _ p v).
+    - apply (Choose.DeadLockFree.Call _ _ _ _ x' s' H_x).
+      clear c x' s' H_x H H_not_stuck.
+      induction x; intros c' x' s' H_x; simpl in H_aux.
+      + inversion_clear H_x.
+        inversion H0.
+      + inversion_clear H_x.
+        inversion H1.
+        rewrite <- H4 in *.
+        destruct (dec c' s) as [H_pre | H_not_pre]; simpl in H_aux.
+        * rewrite (Model.stable_state m c' s H0 H_pre).
+          rewrite (Model.stable_answer m c' s H0 H_pre).
+          now apply (dead_lock_free_ok_no_deps _ _ _ _ _ dec).
+        * destruct (H_not_pre H0).
+      + inversion_clear H_x.
+        destruct (proj1 (andb_true_iff _ _) H_aux) as [H_x1 H_x2].
+        inversion_clear H0.
+        * apply (IHx1 H_x1 c').
+          eapply Choose.Step.New.
+          apply H1.
+        * apply (IHx2 H_x2 c').
+          eapply Choose.Step.New.
+          apply H1.
+  Qed.
+
+  Definition dead_lock_free_ok {E S A} {m : Model.t E S} (dec : Model.Dec.t m)
+    {s : S} {x : Choose.t E A} (H : dead_lock_free dec s x = true)
+    : Choose.DeadLockFree.t m s x.
+  Admitted.
+End Choose.
+
+Module C.
+  Definition dead_lock_free_ok {E S A} {m : Model.t E S} (dec : Model.Dec.t m)
+    {s : S} {x : C.t E A}
+    (H : dead_lock_free dec s (Compile.to_choose x) = true)
+    : C.DeadLockFree.t m s x.
+    apply Equiv.to_c.
+    now apply (Choose.dead_lock_free_ok dec).
+  Qed.
+End C.

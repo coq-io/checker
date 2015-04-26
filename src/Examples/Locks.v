@@ -1,5 +1,7 @@
 (** * One global lock. *)
 Require Import Io.All.
+Require Import DeadLockFree.
+Require Decide.
 Require Model.
 
 Import C.Notations.
@@ -67,3 +69,12 @@ Module Lock.
         inversion H.
   Defined.
 End Lock.
+
+Definition ex1 : C.t Lock.E nat :=
+  do! Lock.lock in
+  do! Lock.unlock in
+  ret 12.
+
+Lemma ex1_ok : C.DeadLockFree.t Lock.m false ex1.
+  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+Qed.
