@@ -125,11 +125,6 @@ Module Choose.
       t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) x2'.
   End Eval.
 
-  Module LastStep.
-    Inductive t {E A} (x : Choose.t E A) (v : A) : Prop :=
-    | New : forall p, Last.Eval.t p x v -> t x v.
-  End LastStep.
-
   Module Step.
     Inductive t {E S A} (m : Model.t E S) (c : Effect.command E) (s : S)
       : Choose.t E A -> Choose.t E A -> S -> Prop :=

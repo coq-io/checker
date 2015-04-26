@@ -10,8 +10,7 @@ Fixpoint to_c {E S A} {m : Model.t E S} {s : S} {x : C.t E A}
   (H : Choose.DeadLockFree.t m s (Compile.to_choose x))
   : C.DeadLockFree.t m s x.
   destruct H.
-  - destruct H.
-    destruct (ToC.Last.to_c Choose.Path.Done H) as [p' [H_p' H_x]].
+  - destruct (ToC.Last.to_c Choose.Path.Done H) as [p' [H_p' H_x]].
     eapply C.DeadLockFree.Ret.
     exact H_x.
   - inversion_clear H.

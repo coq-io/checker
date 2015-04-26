@@ -37,12 +37,11 @@ Axiom falso : False.
 
 Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
   {x : Choose.t E A} (H : not_stuck dec s x = true)
-  : (exists v, Choose.LastStep.t x v) \/
+  : (exists p, exists v, Choose.Last.Eval.t p x v) \/
     (exists c, exists x', exists s', Choose.Step.t m c s x x' s').
   destruct x as [v | c h | x1 x2]; simpl in H.
   - left.
-    exists v.
-    apply (Choose.LastStep.New _ _ Choose.Path.Done).
+    exists Choose.Path.Done, v.
     apply Choose.Last.Eval.Ret.
   - right.
     destruct (dec c s) as [H_pre |].
@@ -52,11 +51,9 @@ Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
     + congruence.
   - destruct (orb_prop _ _ H) as [H_not_stuck | H_not_stuck].
     + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
-      [[v H_last] | [c [x' [s' H_step]]]].
+      [[p [v H_last]] | [c [x' [s' H_step]]]].
       * left.
-        exists v.
-        destruct H_last as [p H_last].
-        eapply Choose.LastStep.New.
+        eexists; eexists.
         apply Choose.Last.Eval.ChooseLeft.
         exact H_last.
       * right.
@@ -66,11 +63,9 @@ Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
         apply Choose.Eval.ChooseLeft.
         exact H1.
     + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
-      [[v H_last] | [c [x' [s' H_step]]]].
+      [[p [v H_last]] | [c [x' [s' H_step]]]].
       * left.
-        exists v.
-        destruct H_last as [p H_last].
-        eapply Choose.LastStep.New.
+        eexists; eexists.
         apply Choose.Last.Eval.ChooseRight.
         exact H_last.
       * right.
@@ -85,8 +80,8 @@ Fixpoint dead_lock_free_ok {X Y S A} {m : Model.t (NoDeps.E X Y) S}
   {dec : Model.Dec.t m} {s : S} {x : Choose.t (NoDeps.E X Y) A}
   (H : dead_lock_free dec s x = true) : Choose.DeadLockFree.t m s x.
   destruct (proj1 (andb_true_iff _ _) H) as [H_not_stuck H_aux].
-  destruct (not_stuck_ok H_not_stuck) as [[v H_v] | [c [x' [s' H_x]]]].
-  - now apply (Choose.DeadLockFree.Ret _ _ _ v).
+  destruct (not_stuck_ok H_not_stuck) as [[p [v H_v]] | [c [x' [s' H_x]]]].
+  - now apply (Choose.DeadLockFree.Ret _ _ _ p v).
   - apply (Choose.DeadLockFree.Call _ _ _ _ x' s' H_x).
     clear c x' s' H_x H H_not_stuck.
     induction x; intros c' x' s' H_x; simpl in H_aux.
