@@ -33,8 +33,6 @@ Definition dead_lock_free {E S A} {m : Model.t E S} (dec : Model.Dec.t m)
   (s : S) (x : Choose.t E A) : bool :=
   andb (not_stuck dec s x) (aux dec s x).
 
-Axiom falso : False.
-
 Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
   {x : Choose.t E A} (H : not_stuck dec s x = true)
   : (exists p, exists v, Choose.Last.Eval.t p x v) \/
@@ -88,10 +86,11 @@ Fixpoint dead_lock_free_ok {X Y S A} {m : Model.t (NoDeps.E X Y) S}
     + inversion_clear H_x.
       inversion H0.
     + inversion_clear H_x.
-      replace c with c' in * by (destruct falso).
-      inversion_clear H1.
+      inversion H1.
+      rewrite <- H4 in *.
       destruct (dec c' s) as [H_pre | H_not_pre]; simpl in H_aux.
-      * replace H_pre with H0 in H_aux by (destruct falso).
+      * rewrite (Model.pre_state_constant m c' s H0 H_pre).
+        rewrite (Model.pre_answer_constant m c' s H0 H_pre).
         now apply (dead_lock_free_ok _ _ _ _ _ dec).
       * destruct (H_not_pre H0).
     + inversion_clear H_x.
