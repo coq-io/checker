@@ -16,11 +16,6 @@ Module Trace.
     end.
 End Trace.
 
-(*Module NotStuck.
-  Fixpoint {E S T} (m : Model.t E S) (s : S) (trace : Trace.t E T) (s' : S)
-    (r : T) (H : DeadLockFree.NotStuck.t m s trace
-End NotStuck.*)
-
 Module Partial.
   Module NotStuck.
     Fixpoint to_choose {E S A} {m : Model.t E S} {s : S}
@@ -46,17 +41,21 @@ Module Partial.
       apply to_choose.
       now apply (H0 p').
   Qed.
-
-  (*Fixpoint to_c {E A} {x : C.t E A} {trace}
-    (H : Choose.Trace.Partial.t (Compile.to_choose x) trace)
-    : C.Trace.Partial.t (Compile.to_choose x) (Trace.to_choose trace).*)
 End Partial.
 
 Module Total.
   Fixpoint to_c {E A} {x : C.t E A} {trace}
     (H : Choose.Trace.Total.t (Compile.to_choose x) trace)
     : C.Trace.Total.t x trace.
-  Admitted.
+    inversion_clear H.
+    - destruct (ToC.Last.to_c Choose.Path.Done H0) as [p' [H_p' H_x]].
+      now apply (C.Trace.Total.Ret _ p').
+    - apply C.Trace.Total.Call.
+      intros p a x' H_x.
+      apply to_c.
+      apply (H0 (Compile.Path.to_choose p)).
+      now apply ToChoose.to_choose.
+  Qed.
 End Total.
 
 Module DeadLockFree.
