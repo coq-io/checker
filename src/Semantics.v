@@ -1,5 +1,6 @@
 Require Import Io.All.
 Require Choose.
+Require Trace.
 
 Module C.
   Module Last.
@@ -67,6 +68,24 @@ Module C.
       t c a p_y y y' ->
       t c a (Path.JoinRight p_y) (C.Join A B x y) (C.Join A B x y').
   End Eval.
+
+  Module Trace.
+    Module Partial.
+      Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
+        : Trace.t E (C.t E A) -> Prop :=
+      | Ret : t x (Trace.Ret x)
+      | Call : forall c p h, (forall a x', Eval.t c a p x x' -> t x' (h a)) ->
+        t x (Trace.Call c h).
+    End Partial.
+
+    Module Total.
+      Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
+        : Trace.t E A -> Prop :=
+      | Ret : forall p v, Last.Eval.t p x v -> t x (Trace.Ret v)
+      | Call : forall c p h, (forall a x', Eval.t c a p x x' -> t x' (h a)) ->
+        t x (Trace.Call c h).
+    End Total.
+  End Trace.
 End C.
 
 Module Choose.
@@ -115,4 +134,22 @@ Module Choose.
       t c a p_x2 x2 x2' ->
       t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) x2'.
   End Eval.
+
+  Module Trace.
+    Module Partial.
+      Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
+        : Trace.t E (Choose.t E A) -> Prop :=
+      | Ret : t x (Trace.Ret x)
+      | Call : forall c p h, (forall a x', Eval.t c a p x x' -> t x' (h a)) ->
+        t x (Trace.Call c h).
+    End Partial.
+
+    Module Total.
+      Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
+        : Trace.t E A -> Prop :=
+      | Ret : forall p v, Last.Eval.t p x v -> t x (Trace.Ret v)
+      | Call : forall c p h, (forall a x', Eval.t c a p x x' -> t x' (h a)) ->
+        t x (Trace.Call c h).
+    End Total.
+  End Trace.
 End Choose.
