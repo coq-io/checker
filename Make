@@ -4,5 +4,7 @@ src/Bisimulation/ToC.v
 src/Bisimulation/ToChoose.v
 src/Choose.v
 src/Compile.v
+src/DeadLockFree.v
+src/Model.v
 src/Semantics.v
 src/Trace.v
