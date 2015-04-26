@@ -50,13 +50,36 @@ Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
       apply (Choose.Step.New _ _ _ _ _ Choose.Path.Done).
       apply Choose.Eval.Call.
     + congruence.
-  - destruct falso.
+  - destruct (orb_prop _ _ H) as [H_not_stuck | H_not_stuck].
+    + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
+      [[v H_last] | [c [x' [s' H_step]]]].
+      * left.
+        exists v.
+        destruct H_last as [p H_last].
+        eapply Choose.LastStep.New.
+        apply Choose.Last.Eval.ChooseLeft.
+        exact H_last.
+      * right.
+        exists c, x', s'.
+        destruct H_step.
+        eapply Choose.Step.New.
+        apply Choose.Eval.ChooseLeft.
+        exact H1.
+    + destruct (not_stuck_ok _ _ _ _ _ _ _ H_not_stuck) as
+      [[v H_last] | [c [x' [s' H_step]]]].
+      * left.
+        exists v.
+        destruct H_last as [p H_last].
+        eapply Choose.LastStep.New.
+        apply Choose.Last.Eval.ChooseRight.
+        exact H_last.
+      * right.
+        exists c, x', s'.
+        destruct H_step.
+        eapply Choose.Step.New.
+        apply Choose.Eval.ChooseRight.
+        exact H1.
 Defined.
-
-(*Fixpoint aux_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s s' : S}
-  {x x' : Choose.t E A} (H_aux : aux dec s x = true)
-  (H_x : Choose.Step.t m s x x' s') : dead_lock_free dec s' x' = true.
-Admitted.*)
 
 Fixpoint dead_lock_free_ok {X Y S A} {m : Model.t (NoDeps.E X Y) S}
   {dec : Model.Dec.t m} {s : S} {x : Choose.t (NoDeps.E X Y) A}
