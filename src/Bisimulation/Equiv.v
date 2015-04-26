@@ -1,6 +1,7 @@
 Require Import Io.All.
 Require Choose.
 Require Compile.
+Require DeadLockFree.
 Require Import Semantics.
 Require ToChoose.
 Require ToC.
@@ -15,7 +16,25 @@ Module Trace.
     end.
 End Trace.
 
+(*Module NotStuck.
+  Fixpoint {E S T} (m : Model.t E S) (s : S) (trace : Trace.t E T) (s' : S)
+    (r : T) (H : DeadLockFree.NotStuck.t m s trace
+End NotStuck.*)
+
 Module Partial.
+  Module NotStuck.
+    Fixpoint to_choose {E S A} {m : Model.t E S} {s : S}
+      {trace : Trace.t E (C.t E A)} {s' : S} {x' : C.t E A}
+      (H : DeadLockFree.NotStuck.t m s trace s' x')
+      : DeadLockFree.NotStuck.t m s (Trace.to_choose trace) s'
+        (Compile.to_choose x').
+      inversion_clear H.
+      - apply DeadLockFree.NotStuck.Ret.
+      - apply (DeadLockFree.NotStuck.Call m s s' _ c _ H0).
+        now apply to_choose.
+    Qed.
+  End NotStuck.
+
   Fixpoint to_choose {E A} {x : C.t E A} {trace} (H : C.Trace.Partial.t x trace)
     : Choose.Trace.Partial.t (Compile.to_choose x) (Trace.to_choose trace).
     inversion_clear H.
@@ -32,3 +51,24 @@ Module Partial.
     (H : Choose.Trace.Partial.t (Compile.to_choose x) trace)
     : C.Trace.Partial.t (Compile.to_choose x) (Trace.to_choose trace).*)
 End Partial.
+
+Module Total.
+  Fixpoint to_c {E A} {x : C.t E A} {trace}
+    (H : Choose.Trace.Total.t (Compile.to_choose x) trace)
+    : C.Trace.Total.t x trace.
+  Admitted.
+End Total.
+
+Module DeadLockFree.
+  Lemma to_c {E S A} {m : Model.t E S} {s : S} {x : C.t E A}
+    (H : DeadLockFree.Choose.t m s (Compile.to_choose x))
+    : DeadLockFree.C.t m s x.
+    intros trace s' x' H_trace H_not_stuck.
+    destruct (H (Trace.to_choose trace) s' (Compile.to_choose x')
+      (Partial.to_choose H_trace) (Partial.NotStuck.to_choose H_not_stuck))
+      as [trace' [s'' [v [H'_trace H'_not_stuck]]]].
+    exists trace', s'', v.
+    split.
+    - now apply Total.to_c.
+    - exact H'_not_stuck.
+  Qed.

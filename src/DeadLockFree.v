@@ -14,13 +14,13 @@ End NotStuck.
 Module C.
   Definition t {E S A} (m : Model.t E S) (s : S) (x : C.t E A) : Prop :=
     forall trace s' x', C.Trace.Partial.t x trace ->
-      NotStuck.t m s trace s' x' -> exists trace', exists s'', exists v,
-      C.Trace.Total.t x' trace' /\ NotStuck.t m s' trace s'' v.
+      NotStuck.t m s trace s' x' -> exists trace', exists s'', exists v : A,
+      C.Trace.Total.t x' trace' /\ NotStuck.t m s' trace' s'' v.
 End C.
 
 Module Choose.
   Definition t {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A) : Prop :=
     forall trace s' x', Choose.Trace.Partial.t x trace ->
-      NotStuck.t m s trace s' x' -> exists trace', exists s'', exists v,
-      Choose.Trace.Total.t x' trace' /\ NotStuck.t m s' trace s'' v.
+      NotStuck.t m s trace s' x' -> exists trace', exists s'', exists v : A,
+      Choose.Trace.Total.t x' trace' /\ NotStuck.t m s' trace' s'' v.
 End Choose.
