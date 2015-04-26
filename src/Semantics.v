@@ -1,5 +1,6 @@
 Require Import Io.All.
 Require Choose.
+Require Model.
 Require Trace.
 
 Module C.
@@ -134,6 +135,19 @@ Module Choose.
       t c a p_x2 x2 x2' ->
       t c a (Path.ChooseRight p_x2) (Choose.Choose x1 x2) x2'.
   End Eval.
+
+  Module LastStep.
+    Inductive t {E A} (x : Choose.t E A) (v : A) : Prop :=
+    | New : forall p, Last.Eval.t p x v -> t x v.
+  End LastStep.
+
+  Module Step.
+    Inductive t {E S A} (m : Model.t E S) (s : S) (x x' : Choose.t E A)
+      : S -> Prop :=
+    | New : forall c p (H : Model.pre m c s),
+      Eval.t c (Model.answer m c s H) p x x' ->
+      t m s x x' (Model.state m c s H).
+  End Step.
 
   Module Trace.
     Module Partial.

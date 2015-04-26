@@ -18,6 +18,15 @@ Module C.
       C.Trace.Total.t x' trace' /\ NotStuck.t m s' trace' s'' v.
 End C.
 
+Module Choose2.
+  Inductive t {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A) : Prop :=
+  | Ret : forall v, Choose.LastStep.t x v -> t m s x
+  | Call : forall x' s',
+    Choose.Step.t m s x x' s' ->
+    (forall x' s', Choose.Step.t m s x x' s' -> t m s' x') ->
+    t m s x.
+End Choose2.
+
 Module Choose.
   Definition t {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A) : Prop :=
     forall trace s' x', Choose.Trace.Partial.t x trace ->

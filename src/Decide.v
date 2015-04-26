@@ -32,7 +32,13 @@ Definition dead_lock_free {E S A} {m : Model.t E S} (dec : Model.Dec.t m)
 
 Fixpoint dead_lock_free_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m}
   {s : S} {x : Choose.t E A} (H : dead_lock_free dec s x = true)
-  : DeadLockFree.Choose.t m s x.
+  : DeadLockFree.Choose2.t m s x.
+  intros trace s' x' H_trace H_not_stuck.
+  inversion H_trace.
+  - rewrite <- H0 in H_not_stuck.
+    exists 
+    inversion_clear H_not_stuck.
+    
 Qed.
 
 (*Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m} {s : S}
