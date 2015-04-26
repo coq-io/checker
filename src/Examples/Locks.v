@@ -1,9 +1,11 @@
 (** * One global lock. *)
+Require Import Coq.Lists.List.
 Require Import Io.All.
 Require Import DeadLockFree.
 Require Decide.
 Require Model.
 
+Import ListNotations.
 Import C.Notations.
 
 Module Lock.
@@ -78,3 +80,59 @@ Definition ex1 : C.t Lock.E nat :=
 Lemma ex1_ok : C.DeadLockFree.t Lock.m false ex1.
   now apply (Decide.C.dead_lock_free_ok Lock.dec).
 Qed.
+
+Fixpoint ex2 (l : list nat) : C.t Lock.E nat :=
+  match l with
+  | [] => ret 0
+  | n :: l =>
+    let! n :=
+      do! Lock.lock in
+      do! Lock.unlock in
+      ret n in
+    let! s := ex2 l in
+    ret (n + s)
+  end.
+
+Lemma ex2_ok : C.DeadLockFree.t Lock.m false (ex2 [1; 2; 3; 4; 5]).
+  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+Qed.
+
+Fixpoint ex3 (l : list nat) : C.t Lock.E nat :=
+  match l with
+  | [] => ret 0
+  | n :: l =>
+    let! s_n :=
+      join (ex3 l) (
+        do! Lock.lock in
+        do! Lock.unlock in
+        ret n) in
+    let (s, n) := s_n in
+    ret (n + s)
+  end.
+
+Lemma ex3_ok : C.DeadLockFree.t Lock.m false (ex3 [1; 2; 3]).
+  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+Qed.
+
+Definition good_lock : C.t Lock.E unit :=
+  choose Lock.lock Lock.unlock.
+
+Fixpoint ex4 (l : list nat) : C.t Lock.E nat :=
+  match l with
+  | [] => ret 0
+  | n :: l =>
+    let! s_n :=
+      join (ex4 l) (
+        do! Lock.lock in
+        do! good_lock in
+        ret n) in
+    let (s, n) := s_n in
+    ret (n + s)
+  end.
+
+Lemma ex4_ok : C.DeadLockFree.t Lock.m false (ex4 [1; 2; 3]).
+  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+Qed.
+
+Time Compute Decide.dead_lock_free Lock.dec false
+  (Compile.to_choose (ex4 [1; 2; 3; 4; 5])).
