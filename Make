@@ -10,4 +10,3 @@ src/Decide.v
 src/Model.v
 src/NoDeps.v
 src/Semantics.v
-src/Trace.v

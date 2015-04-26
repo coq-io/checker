@@ -1,7 +1,6 @@
 Require Import Io.All.
 Require Choose.
 Require Model.
-Require Trace.
 
 Module C.
   Module Last.
@@ -77,24 +76,6 @@ Module C.
       Eval.t c (Model.answer m c s H) p x x' ->
       t m c s x x' (Model.state m c s H).
   End Step.
-
-  Module Trace.
-    Module Partial.
-      Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
-        : Trace.t E (C.t E A) -> Prop :=
-      | Ret : t x (Trace.Ret x)
-      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
-        t x (Trace.Call c k).
-    End Partial.
-
-    Module Total.
-      Inductive t {E : Effect.t} {A : Type} (x : C.t E A)
-        : Trace.t E A -> Prop :=
-      | Ret : forall p v, Last.Eval.t p x v -> t x (Trace.Ret v)
-      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
-        t x (Trace.Call c k).
-    End Total.
-  End Trace.
 End C.
 
 Module Choose.
@@ -156,22 +137,4 @@ Module Choose.
       Eval.t c (Model.answer m c s H) p x x' ->
       t m c s x x' (Model.state m c s H).
   End Step.
-
-  Module Trace.
-    Module Partial.
-      Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
-        : Trace.t E (Choose.t E A) -> Prop :=
-      | Ret : t x (Trace.Ret x)
-      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
-        t x (Trace.Call c k).
-    End Partial.
-
-    Module Total.
-      Inductive t {E : Effect.t} {A : Type} (x : Choose.t E A)
-        : Trace.t E A -> Prop :=
-      | Ret : forall p v, Last.Eval.t p x v -> t x (Trace.Ret v)
-      | Call : forall c k, (forall p a x', Eval.t c a p x x' -> t x' (k a)) ->
-        t x (Trace.Call c k).
-    End Total.
-  End Trace.
 End Choose.

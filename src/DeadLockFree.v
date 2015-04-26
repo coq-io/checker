@@ -1,7 +1,6 @@
 Require Import Io.All.
 Require Model.
 Require Import Semantics.
-Require Trace.
 
 Module C.
   Module DeadLockFree.
