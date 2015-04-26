@@ -1,8 +1,5 @@
 -R src Io.Checker
 
-src/Bisimulation/ToC.v
-src/Bisimulation/ToChoose.v
-src/Bisimulation/Equiv.v
 src/Choose.v
 src/Compile.v
 src/DeadLockFree.v
@@ -10,3 +7,7 @@ src/Decide.v
 src/Model.v
 src/NoDeps.v
 src/Semantics.v
+src/Bisimulation/ToC.v
+src/Bisimulation/ToChoose.v
+src/Bisimulation/Equiv.v
+src/Examples/Locks.v

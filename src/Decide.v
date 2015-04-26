@@ -89,8 +89,8 @@ Fixpoint dead_lock_free_ok {X Y S A} {m : Model.t (NoDeps.E X Y) S}
       inversion H1.
       rewrite <- H4 in *.
       destruct (dec c' s) as [H_pre | H_not_pre]; simpl in H_aux.
-      * rewrite (Model.pre_state_constant m c' s H0 H_pre).
-        rewrite (Model.pre_answer_constant m c' s H0 H_pre).
+      * rewrite (Model.stable_state m c' s H0 H_pre).
+        rewrite (Model.stable_answer m c' s H0 H_pre).
         now apply (dead_lock_free_ok _ _ _ _ _ dec).
       * destruct (H_not_pre H0).
     + inversion_clear H_x.
