@@ -1,7 +1,7 @@
 Require Import Coq.Bool.Bool.
 Require Import Io.All.
 Require Choose.
-Require DeadLockFree.
+Require Import DeadLockFree.
 Require Model.
 Require NoDeps.
 Require Import Semantics.
@@ -83,11 +83,11 @@ Defined.
 
 Fixpoint dead_lock_free_ok {X Y S A} {m : Model.t (NoDeps.E X Y) S}
   {dec : Model.Dec.t m} {s : S} {x : Choose.t (NoDeps.E X Y) A}
-  (H : dead_lock_free dec s x = true) : DeadLockFree.Choose2.t m s x.
+  (H : dead_lock_free dec s x = true) : Choose.DeadLockFree.t m s x.
   destruct (proj1 (andb_true_iff _ _) H) as [H_not_stuck H_aux].
   destruct (not_stuck_ok H_not_stuck) as [[v H_v] | [c [x' [s' H_x]]]].
-  - now apply (DeadLockFree.Choose2.Ret _ _ _ v).
-  - apply (DeadLockFree.Choose2.Call _ _ _ _ x' s' H_x).
+  - now apply (Choose.DeadLockFree.Ret _ _ _ v).
+  - apply (Choose.DeadLockFree.Call _ _ _ _ x' s' H_x).
     clear c x' s' H_x H H_not_stuck.
     induction x; intros c' x' s' H_x; simpl in H_aux.
     + inversion_clear H_x.
