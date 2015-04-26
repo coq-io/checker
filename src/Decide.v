@@ -57,7 +57,7 @@ Defined.
   (H_x : Choose.Step.t m s x x' s') : dead_lock_free dec s' x' = true.
 Admitted.*)
 
-Fixpoint dead_lock_free_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m}
+(*Fixpoint dead_lock_free_ok {E S A} {m : Model.t E S} {dec : Model.Dec.t m}
   {s : S} {x : Choose.t E A} (H : dead_lock_free dec s x = true)
   : DeadLockFree.Choose2.t m s x.
   destruct (proj1 (andb_true_iff _ _) H) as [H_not_stuck H_aux].
@@ -101,4 +101,4 @@ end = true -> DeadLockFree.Choose2.t m s' x'
     
     apply (dead_lock_free_ok _ _ _ _ dec).
     apply (aux_ok H_aux H_x).
-Qed.
+Qed.*)
