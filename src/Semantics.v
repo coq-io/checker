@@ -72,9 +72,9 @@ Module C.
   Module Step.
     Inductive t {E S A} (m : Model.t E S) (c : Effect.command E) (s : S)
       : C.t E A -> C.t E A -> S -> Prop :=
-    | New : forall x x' p (H : Model.pre m c s),
-      Eval.t c (Model.answer m c s H) p x x' ->
-      t m c s x x' (Model.state m c s H).
+    | New : forall x x' p a s',
+      m c s = Some (a, s') -> Eval.t c a p x x' ->
+      t m c s x x' s'.
   End Step.
 End C.
 
@@ -128,8 +128,8 @@ Module Choose.
   Module Step.
     Inductive t {E S A} (m : Model.t E S) (c : Effect.command E) (s : S)
       : Choose.t E A -> Choose.t E A -> S -> Prop :=
-    | New : forall x x' p (H : Model.pre m c s),
-      Eval.t c (Model.answer m c s H) p x x' ->
-      t m c s x x' (Model.state m c s H).
+    | New : forall x x' p a s',
+      m c s = Some (a, s') -> Eval.t c a p x x' ->
+      t m c s x x' s'.
   End Step.
 End Choose.

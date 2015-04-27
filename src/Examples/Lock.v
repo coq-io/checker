@@ -27,49 +27,14 @@ Module Lock.
     call E Command.Unlock.
 
   Definition S := bool.
-  
-  Module Model.
-    Module Pre.
-      Inductive t : Effect.command E -> S -> Prop :=
-      | Lock : t Command.Lock false
-      | Unlock : t Command.Unlock true.
-    End Pre.
-
-    Definition answer c s (H : Pre.t c s) : Effect.answer E c :=
-      tt.
-
-    Definition state c s (H : Pre.t c s) : S :=
-      negb s.
-
-    Lemma stable_answer c s (H1 H2 : Pre.t c s) : answer c s H1 = answer c s H2.
-      reflexivity.
-    Qed.
-
-    Lemma stable_state c s (H1 H2 : Pre.t c s) : state c s H1 = state c s H2.
-      reflexivity.
-    Qed.
-  End Model.
 
   Definition m : Model.t E S :=
-    Model.New Model.Pre.t Model.answer Model.state
-      Model.stable_answer Model.stable_state.
-
-  Definition dec : Model.Dec.t m.
-    intros c s.
-    destruct c.
-    - destruct s.
-      + right.
-        intro H.
-        inversion H.
-      + left.
-        apply Model.Pre.Lock.
-    - destruct s.
-      + left.
-        apply Model.Pre.Unlock.
-      + right.
-        intro H.
-        inversion H.
-  Defined.
+    fun c s =>
+      match (c, s) with
+      | (Command.Lock, false) => Some (tt, true)
+      | (Command.Unlock, true) => Some (tt, false)
+      | _ => None
+      end.
 End Lock.
 
 Definition ex1 : C.t Lock.E nat :=
@@ -78,7 +43,7 @@ Definition ex1 : C.t Lock.E nat :=
   ret 12.
 
 Lemma ex1_ok : C.DeadLockFree.t Lock.m false ex1.
-  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+  now apply Decide.C.dead_lock_free_ok.
 Qed.
 
 Fixpoint ex2 (l : list nat) : C.t Lock.E nat :=
@@ -94,7 +59,7 @@ Fixpoint ex2 (l : list nat) : C.t Lock.E nat :=
   end.
 
 Lemma ex2_ok : C.DeadLockFree.t Lock.m false (ex2 [1; 2; 3; 4; 5]).
-  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+  now apply Decide.C.dead_lock_free_ok.
 Qed.
 
 Fixpoint ex3 (l : list nat) : C.t Lock.E nat :=
@@ -111,7 +76,7 @@ Fixpoint ex3 (l : list nat) : C.t Lock.E nat :=
   end.
 
 Lemma ex3_ok : C.DeadLockFree.t Lock.m false (ex3 [1; 2; 3]).
-  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+  now apply Decide.C.dead_lock_free_ok.
 Qed.
 
 Definition good_lock : C.t Lock.E unit :=
@@ -131,8 +96,8 @@ Fixpoint ex4 (l : list nat) : C.t Lock.E nat :=
   end.
 
 Lemma ex4_ok : C.DeadLockFree.t Lock.m false (ex4 [1; 2; 3]).
-  now apply (Decide.C.dead_lock_free_ok Lock.dec).
+  now apply Decide.C.dead_lock_free_ok.
 Qed.
 
-Time Compute Decide.dead_lock_free Lock.dec false
+Time Compute Decide.dead_lock_free Lock.m false
   (Compile.to_choose (ex4 [1; 2; 3; 4; 5])).

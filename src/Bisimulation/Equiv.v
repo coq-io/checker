@@ -16,14 +16,14 @@ Fixpoint to_c {E S A} {m : Model.t E S} {s : S} {x : C.t E A}
   - inversion_clear H.
     destruct (ToC.to_c H2) as [p' [x'' [H_p [H_x'' H_x]]]].
     eapply C.DeadLockFree.Call.
-    + apply (C.Step.New _ c _ _ x'' p').
-      apply H_x.
-    + clear c x'' s' H1 H2 H_x H_x'' H_p.
+    + now apply (C.Step.New m c s x x'' p' a s').
+    + clear c x'' a s' H1 H2 H_x H_x'' H_p.
       intros c x'' s' H_x.
       apply to_c.
       apply (H0 c).
       destruct H_x.
-      eapply Choose.Step.New.
-      eapply ToChoose.to_choose.
-      exact H1.
+      eapply (Choose.Step.New m c s _ _ _ a s').
+      * exact H.
+      * eapply ToChoose.to_choose.
+        exact H1.
 Qed.
