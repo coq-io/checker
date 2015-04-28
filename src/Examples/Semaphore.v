@@ -12,25 +12,32 @@ Import ListNotations.
 Import C.Notations.
 
 Module Command.
-  Inductive t : Set :=
-  | Incr | Decr.
+  Inductive t (A B : Type) : Type :=
+  | Incr | Decr
+  | Action (x : A).
 End Command.
 
-Definition answer (c : Command.t) : Type :=
-  unit.
+Definition answer {A B : Type} (c : Command.t A B) : Type :=
+  match c with
+  | Command.Incr | Command.Decr => unit
+  | Command.Action _ => B
+  end.
 
-Definition E : Effect.t :=
-  Effect.New Command.t answer.
+Definition E (A B : Type) : Effect.t :=
+  Effect.New (Command.t A B) answer.
 
-Definition incr : C.t E unit :=
-  call E Command.Incr.
+Definition incr {A B : Type} : C.t (E A B) unit :=
+  call (E A B) (Command.Incr A B).
 
-Definition decr : C.t E unit :=
-  call E Command.Decr.
+Definition decr {A B : Type} : C.t (E A B) unit :=
+  call (E A B) (Command.Decr A B).
+
+Definition action {A B : Type} (x : A) : C.t (E A B) B :=
+  call (E A B) (Command.Action A B x).
 
 Definition S (n : nat) := Fin.t n.
 
-Definition m (n : nat) : Model.t E (S n) :=
+Definition m {A B : Type} (n : nat) (f : A -> B) : Model.t (E A B) (S n) :=
   fun c s =>
     match c with
     | Command.Incr =>
@@ -49,4 +56,5 @@ Definition m (n : nat) : Model.t E (S n) :=
         | inright _ => None
         end
       end
+    | Command.Action x => Some (f x, s)
     end.
