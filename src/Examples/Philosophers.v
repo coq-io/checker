@@ -1,8 +1,12 @@
 (** * The dinning of philosphers. *)
+Require Import Coq.Arith.EqNat.
 Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
+Require Import ErrorHandlers.All.
+Require Import FunctionNinjas.All.
 Require Import Io.All.
 Require Import Io.System.All.
+Require Import ListPlus.All.
 Require Import ListString.All.
 Require Import DeadLockFree.
 Require Decide.
@@ -72,25 +76,62 @@ Fixpoint iter_par {n : nat} (l : list (C.t (E n) unit)) : C.t (E n) unit :=
     ret tt
   end.
 
-Definition philospher {n : nat} (l r : Fin.t n) : C.t (E n) unit :=
+Module Forks.
+  Definition of_nat (p n : nat) : option (Fin.t n) :=
+    match Fin.of_nat p n with
+    | inleft p => Some p
+    | inright _ => None
+    end.
+
+  Definition init (n : nat) : list (Fin.t n * Fin.t n) :=
+    seq 0 n |>
+      List.map (fun p =>
+        Option.bind (of_nat p n) (fun l =>
+        Option.bind (of_nat (if beq_nat (p + 1) n then 0 else p + 1) n) (fun r =>
+        Some (l, r))))
+    |> List.remove_nones.
+
+  Definition init_ok : init 3 = [
+    (Fin.F1, Fin.FS Fin.F1);
+    (Fin.FS Fin.F1, Fin.FS (Fin.FS Fin.F1));
+    (Fin.FS (Fin.FS Fin.F1), Fin.F1)] :=
+    eq_refl.
+End Forks.
+
+Definition philospher {n : nat} (l_r : Fin.t n * Fin.t n) : C.t (E n) unit :=
+  let (l, r) := l_r in
   do! take l r in
   release l r.
 
-Definition diner_2 : C.t (E 2) unit :=
-  iter_par [
-    philospher Fin.F1 (Fin.FS Fin.F1);
-    philospher (Fin.FS Fin.F1) Fin.F1].
+Definition diner_seq (n : nat) : C.t (E n) unit :=
+  iter_seq @@ List.map philospher @@ Forks.init n.
 
-Lemma diner_2_ok : C.DeadLockFree.t (model 2) (S.init 2) diner_2.
+Definition diner_par (n : nat) : C.t (E n) unit :=
+  iter_par @@ List.map philospher @@ Forks.init n.
+
+Lemma diner_seq_ok :
+  let n := 6 in
+  C.DeadLockFree.t (model n) (S.init n) (diner_seq n).
   now apply Decide.C.dead_lock_free_ok.
 Qed.
 
-Definition diner_3 : C.t (E 3) unit :=
-  iter_par [
-    philospher Fin.F1 (Fin.FS Fin.F1);
-    philospher (Fin.FS Fin.F1) (Fin.FS (Fin.FS Fin.F1));
-    philospher (Fin.FS (Fin.FS Fin.F1)) Fin.F1].
-
-Lemma diner_3_ok : C.DeadLockFree.t (model 3) (S.init 3) diner_3.
+Lemma diner_par_ok :
+  let n := 3 in
+  C.DeadLockFree.t (model n) (S.init n) (diner_par n).
   now apply Decide.C.dead_lock_free_ok.
 Qed.
+
+Time Compute
+  let n := 4 in
+  Decide.dead_lock_free (model n) (S.init n) (Compile.to_choose @@ diner_par n).
+
+Definition eval_diner_par (argv : list LString.t) : C.t System.effect unit :=
+  let n := 5 in
+  if Decide.dead_lock_free
+    (model n) (S.init n) (Compile.to_choose @@ diner_par n) then
+    System.log (LString.s "OK")
+  else
+    System.log (LString.s "error").
+
+Definition main := Extraction.run eval_diner_par.
+Extraction "extraction/main" main.
