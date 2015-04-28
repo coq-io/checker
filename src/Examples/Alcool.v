@@ -80,6 +80,9 @@ Module S.
     l : bool;
     x : option nat;
     y : option nat }.
+
+  Definition init (e : nat) : t :=
+    New 5 0 e false None None.
 End S.
 
 Definition m : Model.t E S.t :=
@@ -114,3 +117,79 @@ Definition m : Model.t E S.t :=
       | None => None
       end
     end.
+
+Definition ex : C.t E unit :=
+  do! lock in unlock.
+
+Lemma ex_ok : C.DeadLockFree.t m (S.init 0) ex.
+  now apply Decide.C.dead_lock_free_ok.
+Qed.
+
+Fixpoint choose_list (l : list (C.t E unit)) : C.t E unit :=
+  match l with
+  | [] => ret tt
+  | x :: l => choose x (choose_list l)
+  end.
+
+Definition act1 : C.t E unit :=
+  let! z := receive_x in
+  write_z (z * 2).
+
+Definition act2 : C.t E unit :=
+  let! z := receive_y in
+  write_z (z * 3 + 1).
+
+Definition act3 : C.t E unit :=
+  do! lock in
+  do! write_a 1 in
+  unlock.
+
+Definition line_A : C.t E unit :=
+  choose_list [
+    do! check_a 0 in act1;
+    do! check_a 1 in act2;
+    do! check_a 2 in act3].
+
+Definition line_B : C.t E unit :=
+  choose_list [
+    do! check_a 0 in act2;
+    do! check_a 1 in act3;
+    do! check_a 2 in act1].
+
+Definition line_C : C.t E unit :=
+  choose_list [
+    do! check_a 0 in act3;
+    do! check_a 1 in act1;
+    do! check_a 2 in act2].
+
+Definition matrix : C.t E unit :=
+  choose_list [
+    do! check_e 0 in line_A;
+    do! check_e 1 in line_B;
+    do! check_e 2 in line_C].
+
+Fixpoint automaton (steps : nat) : C.t E unit :=
+  match steps with
+  | O => ret tt
+  | S steps => do! matrix in automaton steps
+  end.
+
+Definition task : C.t E unit :=
+  do! send_x 7 in
+  do! send_y 9 in
+  do! lock in
+  do! write_a 0 in
+  do! unlock in
+  do! lock in
+  do! write_a 2 in
+  unlock.
+
+Definition prog (steps : nat) : C.t E unit :=
+  let! _ : unit * unit := join (automaton steps) task in
+  ret tt.
+
+Time Compute Decide.dead_lock_free m (S.init 2) (Compile.to_choose (prog 2)).
+
+Lemma prog_ok : C.DeadLockFree.t m (S.init 0) (prog 1).
+  now apply Decide.C.dead_lock_free_ok.
+Qed.
