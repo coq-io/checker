@@ -1,6 +1,5 @@
 (** * The dinning of philosphers. *)
 Require Import Coq.Arith.EqNat.
-Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import ErrorHandlers.All.
 Require Import FunctionNinjas.All.
@@ -16,59 +15,68 @@ Import ListNotations.
 Import C.Notations.
 
 Module Command.
-  Inductive t (n : nat) : Set :=
-  | Take (l r : Fin.t n)
-  | Release (l r : Fin.t n).
+  Inductive t : Set :=
+  | Take (l r : nat)
+  | Release (l r : nat).
 End Command.
 
-Definition answer {n : nat} (c : Command.t n) : Type :=
+Definition answer (c : Command.t) : Type :=
   unit.
 
-Definition E (n : nat) : Effect.t :=
-  Effect.New (Command.t n) answer.
+Definition E : Effect.t :=
+  Effect.New Command.t answer.
 
-Definition take {n : nat} (l r : Fin.t n) : C.t (E n) unit :=
-  call (E n) (Command.Take n l r).
+Definition take (l r : nat) : C.t E unit :=
+  call E (Command.Take l r).
 
-Definition release {n : nat} (l r : Fin.t n) : C.t (E n) unit :=
-  call (E n) (Command.Release n l r).
+Definition release (l r : nat) : C.t E unit :=
+  call E (Command.Release l r).
 
 Module S.
-  Definition t (n : nat) := Vector.t bool n.
+  Definition t := list bool.
 
-  Fixpoint init (n : nat) : t n :=
-    match n with
-    | O => Vector.nil bool
-    | Datatypes.S n => Vector.cons bool false n (init n)
-    end.
+  Fixpoint init (n : nat) : t :=
+    List.repeat false n.
 End S.
 
-Definition model (n : nat) : Model.t (E n) (S.t n) :=
+Module List.
+  Fixpoint set {A : Type} (l : list A) (n : nat) (a : A) : list A :=
+    match l with
+    | [] => []
+    | x :: l =>
+      match n with
+      | O => a :: l
+      | S n => x :: set l n a
+      end
+    end.
+End List.
+
+Definition model : Model.t E S.t :=
   fun c s =>
     match c with
     | Command.Take l r =>
-      let l_b := Vector.nth s l in
-      let r_b := Vector.nth s r in
+      let l_b := List.nth l s false in
+      let r_b := List.nth r s false in
       if orb l_b r_b then
         None
       else
-        Some (tt, Vector.replace (Vector.replace s r true) l true)
+        Some (tt, List.set (List.set s r true) l true)
     | Command.Release l r =>
-      let l_b := Vector.nth s l in
-      let r_b := Vector.nth s r in
+      let l_b := List.nth l s false in
+      let r_b := List.nth r s false in
       if andb l_b r_b then
-        Some (tt, Vector.replace (Vector.replace s r false) l false)
+        Some (tt, List.set (List.set s r false) l false)
       else
         None
     end.
 
-Fixpoint iter_seq {n : nat} (l : list (C.t (E n) unit)) : C.t (E n) unit :=
+Fixpoint iter_seq (l : list (C.t E unit)) : C.t E unit :=
   match l with
   | [] => ret tt
   | x :: l => do! x in iter_seq l
   end.
 
-Fixpoint iter_par {n : nat} (l : list (C.t (E n) unit)) : C.t (E n) unit :=
+Fixpoint iter_par (l : list (C.t E unit)) : C.t E unit :=
   match l with
   | [] => ret tt
   | x :: l =>
@@ -77,58 +85,45 @@ Fixpoint iter_par {n : nat} (l : list (C.t (E n) unit)) : C.t (E n) unit :=
   end.
 
 Module Forks.
-  Definition of_nat (p n : nat) : option (Fin.t n) :=
-    match Fin.of_nat p n with
-    | inleft p => Some p
-    | inright _ => None
-    end.
+  Definition init (n : nat) : list (nat * nat) :=
+    List.seq 0 n |> List.map (fun p =>
+      (p, if beq_nat (p + 1) n then 0 else p + 1)).
 
-  Definition init (n : nat) : list (Fin.t n * Fin.t n) :=
-    seq 0 n |>
-      List.map (fun p =>
-        Option.bind (of_nat p n) (fun l =>
-        Option.bind (of_nat (if beq_nat (p + 1) n then 0 else p + 1) n) (fun r =>
-        Some (l, r))))
-    |> List.remove_nones.
-
-  Definition init_ok : init 3 = [
-    (Fin.F1, Fin.FS Fin.F1);
-    (Fin.FS Fin.F1, Fin.FS (Fin.FS Fin.F1));
-    (Fin.FS (Fin.FS Fin.F1), Fin.F1)] :=
+  Definition init_ok : init 3 = [(0, 1); (1, 2); (2, 0)] :=
     eq_refl.
 End Forks.
 
-Definition philospher {n : nat} (l_r : Fin.t n * Fin.t n) : C.t (E n) unit :=
+Definition philospher (l_r : nat * nat) : C.t E unit :=
   let (l, r) := l_r in
   do! take l r in
   release l r.
 
-Definition diner_seq (n : nat) : C.t (E n) unit :=
+Definition diner_seq (n : nat) : C.t E unit :=
   iter_seq @@ List.map philospher @@ Forks.init n.
 
-Definition diner_par (n : nat) : C.t (E n) unit :=
+Definition diner_par (n : nat) : C.t E unit :=
   iter_par @@ List.map philospher @@ Forks.init n.
 
 Lemma diner_seq_ok :
   let n := 6 in
-  C.DeadLockFree.t (model n) (S.init n) (diner_seq n).
+  C.DeadLockFree.t model (S.init n) (diner_seq n).
   now apply Decide.C.dead_lock_free_ok.
 Qed.
 
 Lemma diner_par_ok :
   let n := 3 in
-  C.DeadLockFree.t (model n) (S.init n) (diner_par n).
+  C.DeadLockFree.t model (S.init n) (diner_par n).
   now apply Decide.C.dead_lock_free_ok.
 Qed.
 
 Time Compute
   let n := 4 in
-  Decide.dead_lock_free (model n) (S.init n) (Compile.to_choose @@ diner_par n).
+  Decide.dead_lock_free model (S.init n) (Compile.to_choose @@ diner_par n).
 
 Definition eval_diner_par (argv : list LString.t) : C.t System.effect unit :=
-  let n := 5 in
+  let n := 6 in
   if Decide.dead_lock_free
-    (model n) (S.init n) (Compile.to_choose @@ diner_par n) then
+    model (S.init n) (Compile.to_choose @@ diner_par n) then
     System.log (LString.s "OK")
   else
     System.log (LString.s "error").
