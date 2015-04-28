@@ -14,4 +14,5 @@ src/Examples/Alcool.v
 src/Examples/Lock.v
 src/Examples/Locks.v
 src/Examples/Message.v
+src/Examples/Philosophers.v
 src/Examples/Semaphore.v
