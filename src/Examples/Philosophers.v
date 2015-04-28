@@ -45,14 +45,14 @@ Definition model (n : nat) : Model.t (E n) (S.t n) :=
     | Command.Take l r =>
       let l_b := Vector.nth s l in
       let r_b := Vector.nth s r in
-      if orb l_b l_b then
+      if orb l_b r_b then
         None
       else
         Some (tt, Vector.replace (Vector.replace s r true) l true)
     | Command.Release l r =>
       let l_b := Vector.nth s l in
       let r_b := Vector.nth s r in
-      if andb l_b l_b then
+      if andb l_b r_b then
         Some (tt, Vector.replace (Vector.replace s r false) l false)
       else
         None
@@ -71,3 +71,26 @@ Fixpoint iter_par {n : nat} (l : list (C.t (E n) unit)) : C.t (E n) unit :=
     let! _ : unit * unit := join x (iter_par l) in
     ret tt
   end.
+
+Definition philospher {n : nat} (l r : Fin.t n) : C.t (E n) unit :=
+  do! take l r in
+  release l r.
+
+Definition diner_2 : C.t (E 2) unit :=
+  iter_par [
+    philospher Fin.F1 (Fin.FS Fin.F1);
+    philospher (Fin.FS Fin.F1) Fin.F1].
+
+Lemma diner_2_ok : C.DeadLockFree.t (model 2) (S.init 2) diner_2.
+  now apply Decide.C.dead_lock_free_ok.
+Qed.
+
+Definition diner_3 : C.t (E 3) unit :=
+  iter_par [
+    philospher Fin.F1 (Fin.FS Fin.F1);
+    philospher (Fin.FS Fin.F1) (Fin.FS (Fin.FS Fin.F1));
+    philospher (Fin.FS (Fin.FS Fin.F1)) Fin.F1].
+
+Lemma diner_3_ok : C.DeadLockFree.t (model 3) (S.init 3) diner_3.
+  now apply Decide.C.dead_lock_free_ok.
+Qed.
