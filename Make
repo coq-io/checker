@@ -13,3 +13,4 @@ src/Bisimulation/Equiv.v
 src/Examples/Lock.v
 src/Examples/Locks.v
 src/Examples/Message.v
+src/Examples/Semaphore.v
