@@ -12,3 +12,4 @@ src/Bisimulation/ToChoose.v
 src/Bisimulation/Equiv.v
 src/Examples/Lock.v
 src/Examples/Locks.v
+src/Examples/Message.v
