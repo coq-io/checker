@@ -58,3 +58,35 @@ Definition m {A B : Type} (n : nat) (f : A -> B) : Model.t (E A B) (S n) :=
       end
     | Command.Action x => Some (f x, s)
     end.
+
+Fixpoint fold_par {A B : Type} (f : B -> B -> B) (l : list A) (r : B)
+  : C.t (E A B) B :=
+  match l with
+  | [] => ret r
+  | a :: l =>
+    let! b_r := join (fold_par f l r) (
+      do! incr in
+      let! b := action a in
+      do! decr in
+      ret b) in
+    let (b, r) := b_r in
+    ret (f b r)
+  end.
+
+Definition ex1 (n : nat) : C.t (E nat nat) nat :=
+  fold_par plus (List.seq 0 n) 0.
+
+(* Time Compute Decide.dead_lock_free (m 3 id) Fin.F1 (Compile.to_choose (ex1 4)). *)
+
+Definition eval_ex1 (argv : list LString.t) : C.t System.effect unit :=
+  if Decide.dead_lock_free (m 3 id) Fin.F1 (Compile.to_choose (ex1 5)) then
+    System.log (LString.s "OK")
+  else
+    System.log (LString.s "error").
+
+Definition main := Extraction.run eval_ex1.
+Extraction "extraction/main" main.
+
+Lemma ex1_ok : C.DeadLockFree.t (m 12 id) Fin.F1 (ex1 2).
+  now apply Decide.C.dead_lock_free_ok.
+Qed.
