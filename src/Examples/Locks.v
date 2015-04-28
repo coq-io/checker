@@ -2,6 +2,8 @@
 Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import Io.All.
+Require Import Io.System.All.
+Require Import ListString.All.
 Require Import DeadLockFree.
 Require Decide.
 Require Model.
@@ -85,13 +87,23 @@ Definition ex2 : C.t (Locks.E 3) unit :=
   let c : Fin.t 3 := Fin.FS (Fin.FS Fin.F1) in
   iter_par (List.map iter_seq [
     [Locks.lock a; Locks.lock c; Locks.unlock c; Locks.unlock a];
-    [Locks.lock a; Locks.lock c; Locks.unlock c; Locks.unlock a];
     [Locks.lock b; Locks.lock c; Locks.unlock c; Locks.unlock b];
+    [Locks.lock a; Locks.lock c; Locks.unlock c; Locks.unlock a];
     [Locks.lock b; Locks.lock c; Locks.unlock c; Locks.unlock b]]).
 
-Time Compute Decide.dead_lock_free (Locks.m 3) (Locks.init 3)
-  (Compile.to_choose ex2).
+(*Time Compute Decide.dead_lock_free (Locks.m 3) (Locks.init 3)
+  (Compile.to_choose ex2).*)
 
-Lemma ex2_ok : C.DeadLockFree.t (Locks.m 3) (Locks.init 3) ex2.
+Definition eval_ex2 (argv : list LString.t) : C.t System.effect unit :=
+  if Decide.dead_lock_free
+    (Locks.m 3) (Locks.init 3) (Compile.to_choose ex2) then
+    System.log (LString.s "OK")
+  else
+    System.log (LString.s "error").
+
+Definition main := Extraction.run eval_ex2.
+Extraction "extraction/main" main.
+
+(*Lemma ex2_ok : C.DeadLockFree.t (Locks.m 3) (Locks.init 3) ex2.
   now apply Decide.C.dead_lock_free_ok.
-Qed.
+Qed.*)

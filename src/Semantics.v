@@ -16,7 +16,7 @@ Module C.
     Module Eval.
       Inductive t {E : Effect.t}
         : forall {A : Type}, Path.t -> C.t E A -> A -> Prop :=
-      | Ret : forall A (v : A), t Path.Ret (C.Ret E v) v
+      | Ret : forall A v, t Path.Ret (C.Ret A v) v
       | Let : forall A B p_x x v_x p_f f v_f,
         t p_x x v_x -> t p_f (f v_x) v_f ->
         t (Path.Let p_x p_f) (C.Let A B x f) v_f
@@ -45,7 +45,7 @@ Module C.
   Module Eval.
     Inductive t {E : Effect.t} (c : Effect.command E) (a : Effect.answer E c)
       : forall {A : Type}, Path.t -> C.t E A -> C.t E A -> Prop :=
-    | Call : t c a Path.Call (C.Call c) (C.Ret E a)
+    | Call : t c a Path.Call (C.Call c) (C.Ret _ a)
     | Let : forall A B p_x x x' f,
       t c a p_x x x' -> t c a (Path.Let p_x) (C.Let A B x f) (C.Let A B x' f)
     | LetDone : forall A B p_x x v_x p_f f f',
