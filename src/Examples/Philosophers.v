@@ -13,8 +13,8 @@ Import C.Notations.
 
 Module Command.
   Inductive t (n : nat) : Set :=
-  | Lock (id : Fin.t n)
-  | Unlock (id : Fin.t n).
+  | Take (l r : Fin.t n)
+  | Release (l r : Fin.t n).
 End Command.
 
 Definition answer {n : nat} (c : Command.t n) : Type :=
@@ -23,11 +23,11 @@ Definition answer {n : nat} (c : Command.t n) : Type :=
 Definition E (n : nat) : Effect.t :=
   Effect.New (Command.t n) answer.
 
-Definition lock {n : nat} (id : Fin.t n) : C.t (E n) unit :=
-  call (E n) (Command.Lock n id).
+Definition take {n : nat} (l r : Fin.t n) : C.t (E n) unit :=
+  call (E n) (Command.Take n l r).
 
-Definition unlock {n : nat} (id : Fin.t n) : C.t (E n) unit :=
-  call (E n) (Command.Unlock n id).
+Definition release {n : nat} (l r : Fin.t n) : C.t (E n) unit :=
+  call (E n) (Command.Release n l r).
 
 Module S.
   Definition t (n : nat) := Vector.t bool n.
@@ -42,16 +42,18 @@ End S.
 Definition model (n : nat) : Model.t (E n) (S.t n) :=
   fun c s =>
     match c with
-    | Command.Lock id =>
-      let b := Vector.nth s id in
-      if b then
+    | Command.Take l r =>
+      let l_b := Vector.nth s l in
+      let r_b := Vector.nth s r in
+      if orb l_b l_b then
         None
       else
-        Some (tt, Vector.replace s id true)
-    | Command.Unlock id =>
-      let b := Vector.nth s id in
-      if b then
-        Some (tt, Vector.replace s id false)
+        Some (tt, Vector.replace (Vector.replace s r true) l true)
+    | Command.Release l r =>
+      let l_b := Vector.nth s l in
+      let r_b := Vector.nth s r in
+      if andb l_b l_b then
+        Some (tt, Vector.replace (Vector.replace s r false) l false)
       else
         None
     end.
