@@ -107,3 +107,14 @@ Extraction "extraction/main" main.
 (*Lemma ex2_ok : C.DeadLockFree.t (Locks.m 3) (Locks.init 3) ex2.
   now apply Decide.C.dead_lock_free_ok.
 Qed.*)
+
+Definition ex3 : C.t (Locks.E 2) unit :=
+  let a : Fin.t 2 := Fin.F1 in
+  let b : Fin.t 2 := Fin.FS Fin.F1 in
+  iter_par (List.map iter_seq [
+    [Locks.lock a; Locks.lock b; Locks.unlock b; Locks.unlock a];
+    [Locks.lock b; Locks.lock a; Locks.unlock a; Locks.unlock b]]).
+
+(*Lemma ex3_ok : C.DeadLockFree.t (Locks.m 2) (Locks.init 2) ex3.
+  now apply Decide.C.dead_lock_free_ok.
+Qed.*)
