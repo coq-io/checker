@@ -19,20 +19,20 @@ Fixpoint not_stuck {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A)
   | Choose.Choose x1 x2 => orb (not_stuck m s x1) (not_stuck m s x2)
   end.
 
-Fixpoint aux {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A) : bool :=
+Fixpoint explore {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A) : bool :=
   match x with
   | Choose.Ret _ => true
   | Choose.Call c h =>
     match m c s with
-    | Some (a, s') => andb (not_stuck m s' (h a)) (aux m s' (h a))
+    | Some (a, s') => andb (not_stuck m s' (h a)) (explore m s' (h a))
     | None => true
     end
-  | Choose.Choose x1 x2 => andb (aux m s x1) (aux m s x2)
+  | Choose.Choose x1 x2 => andb (explore m s x1) (explore m s x2)
   end.
 
 Definition dead_lock_free {E S A} (m : Model.t E S) (s : S) (x : Choose.t E A)
   : bool :=
-  andb (not_stuck m s x) (aux m s x).
+  andb (not_stuck m s x) (explore m s x).
 
 Module Choose.
   Fixpoint not_stuck_ok {E S A} {m : Model.t E S} {s : S} {x : Choose.t E A}

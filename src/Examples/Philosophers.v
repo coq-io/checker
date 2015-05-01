@@ -121,7 +121,7 @@ Time Compute
   Decide.dead_lock_free model (S.init n) (Compile.to_choose @@ diner_par n).
 
 Definition eval_diner_par (argv : list LString.t) : C.t System.effect unit :=
-  let n := 6 in
+  let n := 7 in
   if Decide.dead_lock_free
     model (S.init n) (Compile.to_choose @@ diner_par n) then
     System.log (LString.s "OK")
