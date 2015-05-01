@@ -84,10 +84,13 @@ Module Choose.
     {s : S} {x : Choose.t (NoDeps.E X Y) A} (H : dead_lock_free m s x = true)
     : Choose.DeadLockFree.t m s x.
     destruct (proj1 (andb_true_iff _ _) H) as [H_not_stuck H_aux].
-    destruct (not_stuck_ok H_not_stuck) as [[p [v H_v]] | [c [x' [s' H_x]]]].
-    - now apply (Choose.DeadLockFree.Ret _ _ _ p v).
-    - apply (Choose.DeadLockFree.Call _ _ _ _ x' s' H_x).
-      clear c x' s' H_x H H_not_stuck.
+    apply Choose.DeadLockFree.New.
+    - destruct (not_stuck_ok H_not_stuck) as [[p [v H_v]] | [c [x' [s' H_x]]]].
+      + left.
+        now exists p, v.
+      + right.
+        now exists c, x', s'.
+    - clear H H_not_stuck.
       induction x; intros c' x' s' H_x; simpl in H_aux.
       + inversion_clear H_x.
         inversion H0.
