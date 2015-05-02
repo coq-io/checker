@@ -12,32 +12,26 @@ Import ListNotations.
 Import C.Notations.
 
 Module Command.
-  Inductive t (A B : Type) : Type :=
-  | Incr | Decr
-  | Action (x : A).
+  Inductive t : Type :=
+  | Incr | Decr.
 End Command.
 
-Definition answer {A B : Type} (c : Command.t A B) : Type :=
-  match c with
-  | Command.Incr | Command.Decr => unit
-  | Command.Action _ => B
-  end.
+Definition answer (c : Command.t) : Type :=
+  unit.
 
-Definition E (A B : Type) : Effect.t :=
-  Effect.New (Command.t A B) answer.
+Definition E : Effect.t :=
+  Effect.New Command.t answer.
 
-Definition incr {A B : Type} : C.t (E A B) unit :=
-  call (E A B) (Command.Incr A B).
+Definition incr : C.t E unit :=
+  call E Command.Incr.
 
-Definition decr {A B : Type} : C.t (E A B) unit :=
-  call (E A B) (Command.Decr A B).
+Definition decr : C.t E unit :=
+  call E Command.Decr.
 
-Definition action {A B : Type} (x : A) : C.t (E A B) B :=
-  call (E A B) (Command.Action A B x).
 
 Definition S (n : nat) := Fin.t n.
 
-Definition m {A B : Type} (n : nat) (f : A -> B) : Model.t (E A B) (S n) :=
+Definition m (n : nat) : Model.t E (S n) :=
   fun c s =>
     match c with
     | Command.Incr =>
@@ -56,37 +50,30 @@ Definition m {A B : Type} (n : nat) (f : A -> B) : Model.t (E A B) (S n) :=
         | inright _ => None
         end
       end
-    | Command.Action x => Some (f x, s)
     end.
 
-Fixpoint fold_par {A B : Type} (f : B -> B -> B) (l : list A) (r : B)
-  : C.t (E A B) B :=
+Fixpoint iter_sem (l : list (C.t E unit)) : C.t E unit :=
   match l with
-  | [] => ret r
-  | a :: l =>
-    let! b_r := join (fold_par f l r) (
-      do! incr in
-      let! b := action a in
-      do! decr in
-      ret b) in
-    let (b, r) := b_r in
-    ret (f b r)
+  | [] => ret tt
+  | x :: l =>
+    let! _ : unit * unit :=
+      join (iter_sem l) (
+        do! incr in
+        do! x in
+        decr) in
+    ret tt
   end.
 
-Definition ex1 (n : nat) : C.t (E nat nat) nat :=
-  fold_par plus (List.seq 0 n) 0.
-
-(* Time Compute Decide.dead_lock_free (m 3 id) Fin.F1 (Compile.to_choose (ex1 4)). *)
-
-Definition eval_ex1 (argv : list LString.t) : C.t System.effect unit :=
-  if Decide.dead_lock_free (m 3 id) Fin.F1 (Compile.to_choose (ex1 5)) then
-    System.log (LString.s "OK")
-  else
-    System.log (LString.s "error").
-
-Definition main := Extraction.run eval_ex1.
-Extraction "extraction/main" main.
-
-Lemma ex1_ok : C.DeadLockFree.t (m 12 id) Fin.F1 (ex1 2).
-  now apply Decide.C.dead_lock_free_ok.
-Qed.
+Fixpoint map_sem {A B} (f : A -> C.t E B) (l : list A) : C.t E (list B) :=
+  match l with
+  | [] => ret []
+  | x :: l =>
+    let! l_y : list B * B :=
+      join (map_sem f l) (
+        do! incr in
+        let! y := f x in
+        do! decr in
+        ret y) in
+    let (l, y) := l_y in
+    ret (y :: l)
+  end.
