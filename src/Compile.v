@@ -24,7 +24,7 @@ Module Path.
         Choose.Path.ChooseRight (to_choose p_x2)
       | C.Last.Path.Join p_x p_y =>
         Choose.Path.ChooseLeft
-          (Choose.Path.bind  (to_choose p_x) (to_choose p_y))
+          (Choose.Path.bind (to_choose p_x) (to_choose p_y))
       end.
   End Last.
 
@@ -47,7 +47,7 @@ Module Path.
     : (C.Last.Path.t * A * Choose.Path.t) + C.Path.t :=
     match x with
     | C.Ret _ v => inl (C.Last.Path.Ret, v, p)
-    | C.Call c => inr C.Path.Call
+    | C.Call _ => inr C.Path.Call
     | C.Let _ _ x f =>
       match to_c x p with
       | inl (p_x, v_x, p) =>
