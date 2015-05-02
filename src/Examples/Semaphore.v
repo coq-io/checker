@@ -31,7 +31,7 @@ Definition decr : C.t E unit :=
 
 Definition S (n : nat) := Fin.t n.
 
-Definition m (n : nat) : Model.t E (S n) :=
+Definition model (n : nat) : Model.t E (S n) :=
   fun c s =>
     match c with
     | Command.Incr =>
@@ -77,3 +77,10 @@ Fixpoint map_sem {A B} (f : A -> C.t E B) (l : list A) : C.t E (list B) :=
     let (l, y) := l_y in
     ret (y :: l)
   end.
+
+Definition ex1 (n : nat) : C.t E (list nat) :=
+  map_sem (fun k => ret (k + 1)) (List.seq 0 n).
+
+Lemma ex1_ok : C.DeadLockFree.t (model 3) Fin.F1 (ex1 3).
+  now apply Decide.C.dead_lock_free_ok.
+Qed.
