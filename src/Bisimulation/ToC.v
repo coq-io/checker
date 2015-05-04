@@ -341,41 +341,6 @@ Fixpoint map {X Y c a A B} {p : Choose.Path.t} {x : Choose.t (NoDeps.E X Y) A}
       * exact H_y'.
 Qed.
 
-(*(*Fixpoint join_left {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
-  {x2 : Choose.t E B} {x'}
-  (H : Choose.Eval.t c a p (Choose.join_left x1 x2) x')
-  : (exists p1, exists v1, exists p2,
-      Choose.Last.Eval.t p1 x1 v1 /\
-      Choose.Eval.t c a p2 (Choose.map x2 (fun v2 => (v1, v2))) x' /\
-      p = Choose.Path.bind p1 p2) \/
-    (exists x'1,
-      Choose.Eval.t c a p x1 x'1 /\
-      Choose.join x'1 x2 = x').
-  destruct p.
-  - destruct x1.
-    + unfold Choose.join_left in *; simpl in *.
-      left.
-      exists Choose.Path.Done, a0, Choose.Path.Done.
-      admit.
-    + right.
-      
-      
-    inversion_clear H.*)
-
-Lemma rewrite_call {E : Effect.t} {c c' : Effect.command E} (H : c = c')
-  {A : Type} (h : Effect.answer E c -> Choose.t E A)
-  : exists h', Choose.Call c h = Choose.Call c' h'.
-  exists (eq_rect c (fun c' => Effect.answer E c' -> _) h _ H).
-  exact (
-    match H in eq _ c' return
-      Choose.Call c h = Choose.Call c' (eq_rect c _ h c' H) with
-    | eq_refl => eq_refl
-    end).
-Qed.
-
-Lemma falso : False.
-Admitted.*)
-
 Fixpoint join_left {X Y c a A B} {p : Choose.Path.t}
   {x1 : Choose.t (NoDeps.E X Y) A} {x2 : Choose.t (NoDeps.E X Y) B} {x'}
   (H : Choose.Eval.t c a p (Choose.join_left x1 x2) x')
@@ -424,7 +389,55 @@ Fixpoint join_left {X Y c a A B} {p : Choose.Path.t}
         now apply Choose.Eval.ChooseRight.
 Qed.
 
-Fixpoint to_c {X Y c a A} {p : Choose.Path.t} {x : C.t (NoDeps.E X Y) A}
+Fixpoint join_right {X Y c a A B} {p : Choose.Path.t}
+  {x1 : Choose.t (NoDeps.E X Y) A} {x2 : Choose.t (NoDeps.E X Y) B} {x'}
+  (H : Choose.Eval.t c a p (Choose.join_right x1 x2) x')
+  : (exists p1, exists v2, exists p2,
+      Choose.Last.Eval.t p1 x2 v2 /\
+      Choose.Eval.t c a p2 (Choose.map x1 (fun v1 => (v1, v2))) x' /\
+      p = Choose.Path.bind p1 p2) \/
+    (exists x'2,
+      Choose.Eval.t c a p x2 x'2 /\
+      Choose.join x1 x'2 = x').
+  destruct x2; simpl in *.
+  - left.
+    exists Choose.Path.Done, b, p.
+    split; [apply Choose.Last.Eval.Ret |].
+    split; [apply H | reflexivity].
+  - right.
+    inversion_clear H.
+    exists (t a).
+    split.
+    + apply Choose.Eval.Call.
+    + reflexivity.
+  - inversion_clear H.
+    + destruct (join_right _ _ _ _ _ _ _ _ _ _ H0).
+      * left.
+        destruct H as [p1 [v2 [p2 [H1 [H2 H3]]]]].
+        exists (Choose.Path.ChooseLeft p1), v2, p2.
+        split; [now apply Choose.Last.Eval.ChooseLeft |].
+        split; trivial.
+        now rewrite H3.
+      * right.
+        destruct H as [x'1 [H1 H2]].
+        exists x'1.
+        split; trivial.
+        now apply Choose.Eval.ChooseLeft.
+    + destruct (join_right _ _ _ _ _ _ _ _ _ _ H0).
+      * left.
+        destruct H as [p1 [v1 [p2 [H1 [H2 H3]]]]].
+        exists (Choose.Path.ChooseRight p1), v1, p2.
+        split; [now apply Choose.Last.Eval.ChooseRight |].
+        split; trivial.
+        now rewrite H3.
+      * right.
+        destruct H as [x'1 [H1 H2]].
+        exists x'1.
+        split; trivial.
+        now apply Choose.Eval.ChooseRight.
+Qed.
+
+Fixpoint to_c_no_deps {X Y c a A} {p : Choose.Path.t} {x : C.t (NoDeps.E X Y) A}
   {x' : Choose.t (NoDeps.E X Y) A}
   (H : Choose.Eval.t c a p (Compile.to_choose x) x')
   : exists p', exists x'',
@@ -443,14 +456,16 @@ Fixpoint to_c {X Y c a A} {p : Choose.Path.t} {x : C.t (NoDeps.E X Y) A}
     + rewrite H_p.
       destruct (Last.to_c p_f H_x) as [p'_x [H'_x]].
       rewrite H'_x.
-      destruct (to_c _ _ _ _ _ _ _ _ H_f) as [p'_f [x'' [H'_f [H_x'']]]].
+      destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_f) as
+        [p'_f [x'' [H'_f [H_x'']]]].
       rewrite H'_f.
       exists (C.Path.LetDone p'_x p'_f); exists x''.
       split; [reflexivity |].
       split.
       * exact H_x''.
       * now apply (C.Eval.LetDone _ _ _ _ _ _ v_x).
-    + destruct (to_c _ _ _ _ _ _ _ _ H_x) as [p'_x [x''' [H'_x [H_x''']]]].
+    + destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_x) as
+        [p'_x [x''' [H'_x [H_x''']]]].
       rewrite H'_x.
       exists (C.Path.Let p'_x); exists (C.Let _ _ x''' t).
       split; [reflexivity |].
@@ -462,14 +477,16 @@ Fixpoint to_c {X Y c a A} {p : Choose.Path.t} {x : C.t (NoDeps.E X Y) A}
   - assert (H_choose := choose H).
     destruct p as [|p|p].
     + destruct H_choose.
-    + destruct (to_c _ _ _ _ _ _ _ _ H_choose) as [p'_x1 [x'' [H_x1 [H_x'']]]].
+    + destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_choose) as
+        [p'_x1 [x'' [H_x1 [H_x'']]]].
       rewrite H_x1.
       exists (C.Path.ChooseLeft p'_x1); exists x''.
       split; [reflexivity |].
       split.
       * exact H_x''.
       * now apply C.Eval.ChooseLeft.
-    + destruct (to_c _ _ _ _ _ _ _ _ H_choose) as [p'_x2 [x'' [H_x2 [H_x'']]]].
+    + destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_choose) as
+        [p'_x2 [x'' [H_x2 [H_x'']]]].
       rewrite H_x2.
       exists (C.Path.ChooseRight p'_x2); exists x''.
       split; [reflexivity |].
@@ -480,15 +497,16 @@ Fixpoint to_c {X Y c a A} {p : Choose.Path.t} {x : C.t (NoDeps.E X Y) A}
     destruct p as [|p|p].
     + destruct H_join.
     + destruct (join_left H_join) as
-        [[p1 [v2 [p2 [H_x1 [H_x2 H_p]]]]] | [x'_1 [H_x1 H_x']]].
+        [[p1 [v1 [p2 [H_x1 [H_x2 H_p]]]]] | [x'_1 [H_x1 H_x']]].
       * destruct (Last.to_c p2 H_x1) as [p'_x1 [H'_x1]].
         rewrite H_p.
         rewrite H'_x1.
         destruct (map H_x2) as [x'2 [H_x'2 H_x']].
-        destruct (to_c _ _ _ _ _ _ _ _ H_x'2) as [p' [x''2 [H'_x2 [H_x''2]]]].
+        destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_x'2) as
+          [p' [x''2 [H'_x2 [H_x''2]]]].
         rewrite H'_x2.
         exists (C.Path.JoinLeftDone p'_x1 p'),
-          (C.Let _ _ x''2 (fun v_y => C.Ret _ (v2, v_y))).
+          (C.Let _ _ x''2 (fun v_y => C.Ret _ (v1, v_y))).
         split; [reflexivity |].
         simpl.
         rewrite H_x'.
@@ -496,7 +514,8 @@ Fixpoint to_c {X Y c a A} {p : Choose.Path.t} {x : C.t (NoDeps.E X Y) A}
         rewrite H_x''2.
         split; [reflexivity |].
         now apply C.Eval.JoinLeftDone.
-      * destruct (to_c _ _ _ _ _ _ _ _ H_x1) as [p'_x1 [x''1 [H'_x'1 [H_x''1]]]].
+      * destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_x1) as
+          [p'_x1 [x''1 [H'_x'1 [H_x''1]]]].
         rewrite H'_x'1.
         exists (C.Path.JoinLeft p'_x1), (C.Join _ _ x''1 x2).
         split; [reflexivity |].
@@ -505,4 +524,40 @@ Fixpoint to_c {X Y c a A} {p : Choose.Path.t} {x : C.t (NoDeps.E X Y) A}
         rewrite H_x'.
         split; [reflexivity |].
         now apply C.Eval.JoinLeft.
+    + destruct (join_right H_join) as
+        [[p1 [v2 [p2 [H_x2 [H_x1 H_p]]]]] | [x'_2 [H_x2 H_x']]].
+      * destruct (Last.to_c p2 H_x2) as [p'_x2 [H'_x2]].
+        rewrite H_p.
+        rewrite H'_x2.
+        destruct (map H_x1) as [x'1 [H_x'1 H_x']].
+        destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_x'1) as
+          [p' [x''1 [H'_x1 [H_x''1]]]].
+        rewrite H'_x1.
+        exists (C.Path.JoinRightDone p' p'_x2),
+          (C.Let _ _ x''1 (fun v_x => C.Ret _ (v_x, v2))).
+        split; [reflexivity |].
+        simpl.
+        rewrite H_x'.
+        rewrite Choose.map_eq_bind_ret.
+        rewrite H_x''1.
+        split; [reflexivity |].
+        now apply C.Eval.JoinRightDone.
+      * destruct (to_c_no_deps _ _ _ _ _ _ _ _ H_x2) as
+          [p'_x2 [x''2 [H'_x'2 [H_x''2]]]].
+        rewrite H'_x'2.
+        exists (C.Path.JoinRight p'_x2), (C.Join _ _ x1 x''2).
+        split; [reflexivity |].
+        simpl.
+        rewrite H_x''2.
+        rewrite H_x'.
+        split; [reflexivity |].
+        now apply C.Eval.JoinRight.
 Qed.
+
+Definition to_c {E c a A} {p : Choose.Path.t} {x : C.t E A} {x' : Choose.t E A}
+  (H : Choose.Eval.t c a p (Compile.to_choose x) x')
+  : exists p', exists x'',
+      Compile.Path.to_c x p = inr p' /\
+      Compile.to_choose x'' = x' /\
+      C.Eval.t c a p' x x''.
+Admitted.
