@@ -224,68 +224,29 @@ Module Last.
   Qed.
 End Last.
 
-Fixpoint gre {E c c' a A} {h'} {x' : Choose.t E A}
-  (H : Choose.Eval.t c a Choose.Path.Done (Choose.Call c' h') x')
-  : exists h, Choose.Eval.t c a Choose.Path.Done (Choose.Call c h) x'.
-  inversion H.
-  (*refine (
-    match H in Choose.Eval.t _ _ _ x _ return
-      match x with
-      | Choose.Call c h =>
-Qed.*)
-Admitted.
-
-(*Fixpoint map {E c a A B} {p : Choose.Path.t} {x : Choose.t E A} {f : A -> B}
-  {y : Choose.t E B} {g : B -> C} (H : Choose.Eval.t c a p (Choose.map x f) y)
-  : 
-  : exists x', Choose.Eval.t c a p x x' /\ y = Choose.map x' f.*)
-
-(*Fixpoint map {E c a A B} {p : Choose.Path.t} {x : Choose.t E A} {f : A -> B}
-  {y : Choose.t E B} (H : Choose.Eval.t c a p (Choose.map x f) y)
-  : exists x', Choose.Eval.t c a p x x' /\ y = Choose.map x' f.
-  destruct p; simpl in *.
-  - inversion_clear H.
-    exists 
-  inversion H.
-  - destruct x; simpl in H2; try congruence.
-    assert (c = c0) by admit.
-    assert (t' := t).
-    rewrite <- H3 in t'.
-    exists (t' a).
-    
-    exists h.
+Fixpoint map {X Y c a A B} {p : Choose.Path.t} {x : Choose.t (NoDeps.E X Y) A}
+  {f : A -> B} {y' : Choose.t (NoDeps.E X Y) B}
+  (H : Choose.Eval.t c a p (Choose.map x f) y')
+  : exists x', Choose.Eval.t c a p x x' /\ y' = Choose.map x' f.
   destruct x; simpl in *.
   - inversion H.
-  - assert (exists h : Effect.answer E c -> Choose.t E B,
-      Choose.Call c0 (fun a0 => Choose.map (t a0) f) = Choose.Call c h).
-    refine (
-      match H in Choose.Eval.t _ _ _ x _ return
-        match x with
-        | Choose.Call c' h' =>
-          exists h, Choose.Call c' h = Choose.Call c h'
-        | _ => True
-        end : Prop with
-      | Choose.Eval.Call _ => _
-      | _ => I
-      end).
-    rewrite H0.
-    exists (Choose.map (t a) f).
-    destruct p; try inversion_clear H.
-    eexists.
+  - inversion_clear H.
+    exists (t a).
     split.
-    + apply (Choose.Eval.Call c a).
-Qed.*)
-
-(*Fixpoint map {E c a A B} {p : Choose.Path.t} {x x' : Choose.t E A}
-  (f : A -> B) (H : Choose.Eval.t c a p x x')
-  : Choose.Eval.t c a p (Choose.map x f) (Choose.map x' f).
-  destruct p; inversion_clear H; simpl.
-  - apply (Choose.Eval.Call c a).
-  - apply Choose.Eval.ChooseLeft.
-    now apply map.
-  - apply Choose.Eval.ChooseRight.
-    now apply map.
-Qed.*)
+    + apply Choose.Eval.Call.
+    + reflexivity.
+  - inversion_clear H.
+    + destruct (map _ _ _ _ _ _ _ _ _ _ H0) as [x' [H_x' H_y']].
+      exists x'.
+      split.
+      * now apply Choose.Eval.ChooseLeft.
+      * exact H_y'.
+    + destruct (map _ _ _ _ _ _ _ _ _ _ H0) as [x' [H_x' H_y']].
+      exists x'.
+      split.
+      * now apply Choose.Eval.ChooseRight.
+      * exact H_y'.
+Qed.
 
 Fixpoint bind {E c a A B} {p : Choose.Path.t} {x : Choose.t E A}
   {f : A -> Choose.t E B} {y : Choose.t E B}
@@ -315,30 +276,6 @@ Fixpoint join {E c a A B} {p : Choose.Path.t} {x1 : Choose.t E A}
       Choose.Eval.t c a p (Choose.join_right x1 x2) x'
     end.
   now inversion_clear H.
-Qed.
-
-Fixpoint map {X Y c a A B} {p : Choose.Path.t} {x : Choose.t (NoDeps.E X Y) A}
-  {f : A -> B} {y' : Choose.t (NoDeps.E X Y) B}
-  (H : Choose.Eval.t c a p (Choose.map x f) y')
-  : exists x', Choose.Eval.t c a p x x' /\ y' = Choose.map x' f.
-  destruct x; simpl in *.
-  - inversion H.
-  - inversion_clear H.
-    exists (t a).
-    split.
-    + apply Choose.Eval.Call.
-    + reflexivity.
-  - inversion_clear H.
-    + destruct (map _ _ _ _ _ _ _ _ _ _ H0) as [x' [H_x' H_y']].
-      exists x'.
-      split.
-      * now apply Choose.Eval.ChooseLeft.
-      * exact H_y'.
-    + destruct (map _ _ _ _ _ _ _ _ _ _ H0) as [x' [H_x' H_y']].
-      exists x'.
-      split.
-      * now apply Choose.Eval.ChooseRight.
-      * exact H_y'.
 Qed.
 
 Fixpoint join_left {X Y c a A B} {p : Choose.Path.t}
