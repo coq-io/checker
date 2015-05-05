@@ -41,6 +41,9 @@ Module Path.
       Choose.Path.ChooseLeft (Choose.Path.bind
         (Last.to_choose p_x) (to_choose p_y))
     | C.Path.JoinRight p_y => Choose.Path.ChooseRight (to_choose p_y)
+    | C.Path.JoinRightDone p_x p_y =>
+      Choose.Path.ChooseRight (Choose.Path.bind
+        (to_choose p_x) (Last.to_choose p_y))
     end.
 
   Fixpoint to_c {E A} (x : C.t E A) (p : Choose.Path.t)
@@ -88,7 +91,7 @@ Module Path.
         | inl (p_y, v_y, p) =>
           match to_c x p with
           | inl (p_x, v_x, p) => inl (C.Last.Path.Join p_x p_y, (v_x, v_y), p)
-          | inr p_x => inr p_x
+          | inr p_x => inr (C.Path.JoinRightDone p_x p_y)
           end
         | inr p_y => inr (C.Path.JoinRight p_y)
         end
