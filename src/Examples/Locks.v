@@ -101,7 +101,7 @@ Definition eval_ex2 (argv : list LString.t) : C.t System.effect unit :=
   else
     System.log (LString.s "error").
 
-Definition main := Extraction.run eval_ex2.
+Definition main := Extraction.launch eval_ex2.
 Extraction "extraction/main" main.
 
 (*Lemma ex2_ok : C.DeadLockFree.t (Locks.m 3) (Locks.init 3) ex2.

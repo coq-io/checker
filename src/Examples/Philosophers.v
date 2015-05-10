@@ -128,5 +128,5 @@ Definition eval_diner_par (argv : list LString.t) : C.t System.effect unit :=
   else
     System.log (LString.s "error").
 
-Definition main := Extraction.run eval_diner_par.
+Definition main := Extraction.launch eval_diner_par.
 Extraction "extraction/main" main.
