@@ -129,6 +129,13 @@ Fixpoint join_right {E c a A B} {x : Choose.t E B} {p_y}
     now apply join_right.
 Qed.
 
+Fixpoint join_right_done {E c a A B} {p_x p_y} {x x' : Choose.t E A}
+  {y : Choose.t E B} {v_y : B} (H_x : Choose.Eval.t c a p_x x x')
+  (H_y : Choose.Last.Eval.t p_y y v_y)
+  : Choose.Eval.t c a (Choose.Path.bind p_x p_y) (Choose.join_right x y)
+    (Choose.bind x' (fun v_x => Choose.Ret (v_x, v_y))).
+Admitted.
+
 Fixpoint to_choose {E c a A} {p : C.Path.t} {x x' : C.t E A}
   (H : C.Eval.t c a p x x')
   : Choose.Eval.t c a
@@ -154,4 +161,8 @@ Fixpoint to_choose {E c a A} {p : C.Path.t} {x x' : C.t E A}
   - apply Choose.Eval.ChooseRight.
     apply join_right.
     now apply to_choose.
+  - apply Choose.Eval.ChooseRight.
+    apply join_right_done.
+    + now apply to_choose.
+    + now apply Last.to_choose.
 Qed.

@@ -15,14 +15,14 @@ Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   | Choose x1 x2 => Choose (map x1 f) (map x2 f)
   end.
 
-Fixpoint map_compose {E A B C} (x : t E A) (f : A -> B) (g : B -> C)
+(*Fixpoint map_compose {E A B C} (x : t E A) (f : A -> B) (g : B -> C)
   {struct x} : map (map x f) g = map x (fun x => g (f x)).
 Admitted.
 (*  destruct x; simpl.
   - reflexivity.
   - apply f_equal.
     rewrite (map_compose _ _ _ _ (t0 a).
-Qed.*)
+Qed.*)*)
 
 Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
   match x with
@@ -30,6 +30,16 @@ Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
   | Call c h => Call c (fun a => bind (h a) f)
   | Choose x1 x2 => Choose (bind x1 f) (bind x2 f)
   end.
+
+(** Admitted. Would require fucntion extensionality. *)
+Fixpoint map_eq_bind_ret {E A B} (x : t E A) (f : A -> B)
+  {struct x} : map x f = bind x (fun v_x => Ret (f v_x)).
+Admitted.
+(*  destruct x; simpl.
+  - reflexivity.
+  - apply f_equal.
+    rewrite (map_eq_bind_ret).
+Qed.*)
 
 Fixpoint join_left_aux {E A B} (x : t E A) (y : t E B)
   (join_right : forall A, t E A -> t E (A * B)) : t E (A * B) :=
