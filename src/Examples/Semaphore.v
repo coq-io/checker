@@ -78,8 +78,23 @@ Fixpoint map_sem {A B} (f : A -> C.t E B) (l : list A) : C.t E (list B) :=
     ret (y :: l)
   end.
 
+Definition shell {A} (x : C.t E A) : C.t E A :=
+  do! incr in
+  let! y := x in
+  do! decr in
+  ret y.
+
+Fixpoint map_sem' {A B} (f : A -> C.t E B) (l : list A) : C.t E (list B) :=
+  match l with
+  | [] => ret []
+  | x :: l =>
+    let! l_y : list B * B := join (map_sem' f l) (shell (f x)) in
+    let (l, y) := l_y in
+    ret (y :: l)
+  end.
+
 Definition ex1 (n : nat) : C.t E (list nat) :=
-  map_sem (fun k => ret (k + 1)) (List.seq 0 n).
+  map_sem' (fun k => ret (k + 1)) (List.seq 0 n).
 
 Lemma ex1_ok : C.DeadLockFree.t (model 3) Fin.F1 (ex1 3).
   now apply Decide.C.dead_lock_free_ok.
