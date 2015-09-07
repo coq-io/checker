@@ -8,6 +8,22 @@ Arguments Ret {E A} _.
 Arguments Call {E A} _ _.
 Arguments Choose {E A} _ _.
 
+Module Eq.
+  Inductive t {E A} : Choose.t E A -> Choose.t E A -> Prop :=
+  | Ret : forall v, t (Ret v) (Ret v)
+  | Call : forall c h1 h2,
+    (forall a, t (h1 a) (h2 a)) -> t (Call c h1) (Call c h2)
+  | Choose : forall x11 x12 x21 x22,
+    t x11 x12 -> t x21 x22 -> t (Choose x11 x21) (Choose x12 x22).
+
+  Fixpoint reflexivity {E A} (x : Choose.t E A) : t x x.
+    destruct x as [v | c h | x1 x2].
+    - apply Ret.
+    - apply Call; intro a; apply reflexivity.
+    - apply Choose; apply reflexivity.
+  Qed.
+End Eq.
+
 Fixpoint map {E A B} (x : t E A) (f : A -> B) : t E B :=
   match x with
   | Ret v => Ret (f v)
@@ -31,15 +47,13 @@ Fixpoint bind {E A B} (x : t E A) (f : A -> t E B) : t E B :=
   | Choose x1 x2 => Choose (bind x1 f) (bind x2 f)
   end.
 
-(** Admitted. Would require fucntion extensionality. *)
-Fixpoint map_eq_bind_ret {E A B} (x : t E A) (f : A -> B)
-  {struct x} : map x f = bind x (fun v_x => Ret (f v_x)).
-Admitted.
-(*  destruct x; simpl.
-  - reflexivity.
-  - apply f_equal.
-    rewrite (map_eq_bind_ret).
-Qed.*)
+Fixpoint map_eq_bind_ret {E A B} (x : t E A) (f : A -> B) {struct x}
+  : Eq.t (map x f) (bind x (fun v_x => Ret (f v_x))).
+  destruct x as [v | c h | x1 x2]; simpl.
+  - apply Eq.Ret.
+  - apply Eq.Call; intro a; apply map_eq_bind_ret.
+  - apply Eq.Choose; apply map_eq_bind_ret.
+Qed.
 
 Fixpoint join_left_aux {E A B} (x : t E A) (y : t E B)
   (join_right : forall A, t E A -> t E (A * B)) : t E (A * B) :=
